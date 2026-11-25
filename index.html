@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#171b22">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,11 +14,13 @@
   --accent:#4da3ff; --green:#3ecf6a; --amber:#f5a623; --red:#ff5b6a; --blue:#4da3ff;
 }
 *{box-sizing:border-box}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;overscroll-behavior:none}
 body{
   background:var(--bg); color:var(--txt);
   font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   -webkit-font-smoothing:antialiased;
+  -webkit-text-size-adjust:100%;
+  touch-action:manipulation;
 }
 .mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .wrap{max-width:1500px;margin:0 auto;padding:12px 14px 30px}
@@ -219,9 +221,9 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
 .modal .row{margin-top:12px;display:flex;gap:8px;justify-content:flex-end}
 
 @media (max-width: 900px){
-  :root{--pane-h:calc(100vh - 220px)}
+  :root{--pane-h:calc(100vh - 236px)}
   @supports (height: 100dvh){
-    :root{--pane-h:calc(100dvh - 220px)}
+    :root{--pane-h:calc(100dvh - 236px)}
   }
   .wrap{padding:8px 10px calc(74px + env(safe-area-inset-bottom))}
   header.top h1{font-size:17px}
@@ -254,10 +256,20 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
   .legend{gap:8px;font-size:11px;margin-top:-2px}
   .map-hint{display:none}
 
-  /* тап-зона маркеров больше визуального кружка */
-  .marker::after{content:'';position:absolute;inset:-11px;border-radius:50%}
+  /* маркер остаётся маленьким на экране, но захватывать его не мешает панораме */
   .marker{width:20px;height:20px}
   .map-stage.no-labels .mlabel{display:none}
+
+  /* статистика закрывает экран — панель вкладок должна быть выше неё,
+     иначе уйти со статистики нечем */
+  .tabbar{z-index:70}
+  .stats{padding:10px 10px calc(68px + env(safe-area-inset-bottom))}
+  .stats-body{flex-direction:column;gap:8px;overflow-y:auto}
+  .stats-side{flex:0 0 auto;max-height:38vh}
+  .stats-main{flex:1 1 auto;min-height:240px;overflow:visible}
+  .stats-top h2{font-size:15px}
+  .stats-top .counts{font-size:11px}
+  .nums{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
 
   /* детали над панелью вкладок */
   .detail{left:8px;right:8px;bottom:calc(72px + env(safe-area-inset-bottom));
@@ -270,7 +282,7 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
 .tabbar{display:none}
 @media (max-width: 900px){
   .mobile-only{display:inline-flex;align-items:center;justify-content:center}
-  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:45;
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;
     background:var(--bg2);border-top:1px solid var(--line);
     padding:5px 5px calc(5px + env(safe-area-inset-bottom));gap:3px;
     -webkit-user-select:none;user-select:none}
@@ -1741,7 +1753,10 @@ const stage = $('mapStage');
 let dragging = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
 const activePts = new Map();
 let pinch = null;
-let lastTap = 0, lastTapX = 0, lastTapY = 0, movedSinceDown = false;
+let lastTap = 0, lastTapX = 0, lastTapY = 0;
+let movedSinceDown = false;
+let downMarker = null;      /* точка, на которой начали жест — может оказаться тапом */
+let multiTouched = false;   /* в жесте участвовало больше одного пальца */
 
 function clampScale(v){ return Math.min(Math.max(v, mapView.minS), 8); }
 function zoomAt(clientX, clientY, factor){
@@ -1761,12 +1776,19 @@ stage.addEventListener('wheel', e=>{
 }, { passive:false });
 
 stage.addEventListener('pointerdown', e=>{
-  if (e.target.closest('.marker')) return;
+  /* Жест можно начать и на точке: иначе на телефоне 161 маркер перекрывает карту
+     и панорама не запускается почти нигде. Решим на pointerup: сдвинулся — тянули. */
+  const mk = e.target.closest('.marker');
+  if (activePts.size === 0){
+    downMarker = mk ? mk.dataset.id : null;
+    movedSinceDown = false;
+    multiTouched = false;
+  }
   activePts.set(e.pointerId, { x: e.clientX, y: e.clientY });
   try { stage.setPointerCapture(e.pointerId); } catch(err){}
 
   if (activePts.size === 2){
-    /* второй палец — начинаем пинч, тянуть уже не надо */
+    multiTouched = true;
     dragging = false;
     stage.classList.remove('dragging');
     const [a, b] = Array.from(activePts.values());
@@ -1777,7 +1799,7 @@ stage.addEventListener('pointerdown', e=>{
       s: mapView.s, tx: mapView.tx, ty: mapView.ty
     };
   } else if (activePts.size === 1){
-    dragging = true; movedSinceDown = false;
+    dragging = true;
     startX = e.clientX; startY = e.clientY; startTx = mapView.tx; startTy = mapView.ty;
     stage.classList.add('dragging');
   }
@@ -1794,7 +1816,6 @@ stage.addEventListener('pointermove', e=>{
     const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
     const rect = stage.getBoundingClientRect();
     const ns = clampScale(pinch.s * (dist / pinch.dist));
-    /* точка под пальцами остаётся на месте */
     const mapX = (pinch.cx - rect.left - pinch.tx) / pinch.s;
     const mapY = (pinch.cy - rect.top - pinch.ty) / pinch.s;
     mapView.s = ns;
@@ -1806,24 +1827,46 @@ stage.addEventListener('pointermove', e=>{
 
   if (!dragging) return;
   const dx = e.clientX - startX, dy = e.clientY - startY;
-  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) movedSinceDown = true;
+  if (!movedSinceDown && (Math.abs(dx) > 4 || Math.abs(dy) > 4)){
+    movedSinceDown = true;
+    lastTap = 0;      /* жест был перетаскиванием — двойной тап начинается заново */
+  }
+  /* двигаем только после порога — иначе случайное дрожание пальца съедает тап */
+  if (!movedSinceDown) return;
   mapView.tx = startTx + dx; mapView.ty = startTy + dy;
   applyMapTransform();
 });
 
-function endDrag(e){
+function releasePoint(e){
   if (e && e.pointerId !== undefined) activePts.delete(e.pointerId);
   if (activePts.size < 2) pinch = null;
-  if (activePts.size === 0){ dragging = false; stage.classList.remove('dragging'); }
+  if (activePts.size === 1){
+    /* остался один палец — продолжаем тянуть от него, иначе карта «залипает» */
+    const [p] = Array.from(activePts.values());
+    dragging = true;
+    startX = p.x; startY = p.y; startTx = mapView.tx; startTy = mapView.ty;
+    movedSinceDown = true;   /* после пинча это уже не тап */
+    return;
+  }
+  if (activePts.size === 0){
+    dragging = false;
+    stage.classList.remove('dragging');
+  }
 }
-stage.addEventListener('pointerup', endDrag);
-stage.addEventListener('pointercancel', endDrag);
-stage.addEventListener('pointerleave', e=>{ if (activePts.size === 0){ dragging = false; stage.classList.remove('dragging'); } });
 
-/* двойной тап — приблизить (с телефона без колеса мыши иначе неудобно) */
 stage.addEventListener('pointerup', e=>{
-  if (movedSinceDown) return;
-  if (e.target.closest('.marker')) return;
+  const wasTap = !movedSinceDown && !multiTouched && activePts.size === 1;
+  const mk = downMarker;
+  releasePoint(e);
+  if (!wasTap) return;
+
+  if (mk){
+    /* тап по точке — карточка босса */
+    showDetail(mk);
+    downMarker = null;
+    return;
+  }
+
   const now = Date.now();
   const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 30;
   if (now - lastTap < 320 && near){
@@ -1834,11 +1877,17 @@ stage.addEventListener('pointerup', e=>{
   }
 });
 
-$('markers').addEventListener('click', e=>{
-  const m = e.target.closest('.marker'); if (!m) return;
-  showDetail(m.dataset.id);
+stage.addEventListener('pointercancel', e=>{
+  releasePoint(e);
+  movedSinceDown = true;   /* отменённый жест — не тап */
 });
-
+stage.addEventListener('pointerleave', ()=>{
+  if (activePts.size === 0){ dragging = false; stage.classList.remove('dragging'); }
+});
+/* Safari: не даём странице масштабироваться жестами поверх карты */
+['gesturestart','gesturechange','gestureend'].forEach(t=>{
+  stage.addEventListener(t, e=> e.preventDefault(), { passive:false });
+});
 /* ---------- мобильная навигация ---------- */
 function isMobile(){ return window.matchMedia('(max-width: 900px)').matches; }
 function syncTabbar(){
@@ -1852,6 +1901,7 @@ function setMobileView(v){
   const main = document.querySelector('.main');
   if (!main) return;
   if (v === 'stats'){ openStats(statsSel); return; }
+  if (statsOpen) closeStats();
   main.dataset.mv = v;
   settings.mv = v; saveSet();
   syncTabbar();
