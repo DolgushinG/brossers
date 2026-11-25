@@ -26,11 +26,11 @@
 
 Шаг 2. Таблицы
 --------------
-(rb_kills и rb_log уже созданы. Осталось добавить колонку killed_at — блок «ТОЛЬКО СТАТИСТИКА» ниже)
+(rb_kills, rb_log и killed_at уже есть. Осталось создать rb_presence — блок «ТОЛЬКО ПРИСУТСТВИЕ»)
 1. В проекте слева открой: SQL Editor → New query.
-2. Если настраиваешь с нуля — вставь ОБА блока ниже и нажми Run.
-   Если таблицы уже есть (твой случай) — вставь блок «ТОЛЬКО СТАТИСТИКА».
-   (Повторный запуск первого блока даст ошибку «policy already exists» и ничего не испортит.)
+2. Если настраиваешь с нуля — вставь ВСЕ блоки ниже и нажми Run.
+   Если уже работаешь (твой случай) — вставь блок «ТОЛЬКО ПРИСУТСТВИЕ».
+   Все блоки идемпотентны: повторный запуск безопасен, политики пересоздаются.
 
 -- ---------- начало SQL ----------
 create table if not exists public.rb_kills (
@@ -81,6 +81,26 @@ create policy "log insert" on public.rb_log for insert with check (true);
 -- а не по фактическому времени убийства
 alter table public.rb_log add column if not exists killed_at bigint;
 -- ---------- конец SQL: ТОЛЬКО СТАТИСТИКА ----------
+
+-- ---------- начало SQL: ТОЛЬКО ПРИСУТСТВИЕ ----------
+-- кто сейчас на связи: каждая открытая страница раз в 45 секунд обновляет seen_at
+create table if not exists public.rb_presence (
+  id      text primary key,   -- случайный id браузера
+  name    text,               -- имя игрока (как в логе)
+  seen_at bigint not null default 0
+);
+
+create index if not exists rb_presence_seen_idx on public.rb_presence (seen_at desc);
+
+alter table public.rb_presence enable row level security;
+
+drop policy if exists "presence read" on public.rb_presence;
+drop policy if exists "presence insert" on public.rb_presence;
+drop policy if exists "presence update" on public.rb_presence;
+create policy "presence read"   on public.rb_presence for select using (true);
+create policy "presence insert" on public.rb_presence for insert with check (true);
+create policy "presence update" on public.rb_presence for update using (true) with check (true);
+-- ---------- конец SQL: ТОЛЬКО ПРИСУТСТВИЕ ----------
 
 Шаг 3. Ключи в index.html
 -------------------------

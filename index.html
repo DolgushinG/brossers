@@ -69,6 +69,14 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
 .log-empty{color:var(--dim2);font-size:12px;padding:8px 2px;line-height:1.5}
 .log-warn{color:var(--amber);font-size:11.5px;padding:8px 2px;line-height:1.5}
 #logBtn.off{opacity:.55}
+.presence{display:flex;align-items:center;gap:4px;font-size:11.5px;padding:2px 7px;border-radius:20px;border:1px solid var(--line);color:var(--dim);cursor:pointer;background:transparent;margin-left:6px}
+.presence:hover{color:var(--txt);border-color:var(--accent)}
+.presence .dot-on{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;box-shadow:0 0 5px rgba(62,207,106,.8)}
+.presence-list{max-height:150px;overflow-y:auto;padding:6px 10px 8px;border-bottom:1px solid var(--line);background:rgba(77,163,255,.05)}
+.presence-list .prow{display:flex;gap:7px;align-items:center;font-size:12px;padding:3px 0}
+.presence-list .prow .pn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.presence-list .prow .pt{color:var(--dim2);font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.presence-list .prow.me .pn{color:var(--accent);font-weight:600}
 
 /* ---- статистика ---- */
 .stats{position:fixed;inset:0;background:rgba(9,12,16,.97);z-index:60;display:none;flex-direction:column;padding:14px}
@@ -259,11 +267,15 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
   <div class="main">
     <div class="log-col" id="logCol">
       <div class="log-head">Лог
+        <button id="presenceBtn" class="presence is-hidden" title="Кто сейчас на связи">
+          <i class="dot-on"></i><span id="presenceCount">0</span>
+        </button>
         <span class="who" title="Твоё имя в логе — клик, чтобы поменять">
           <b id="actorName">гость</b>
           <button id="actorBtn" title="Поменять имя">✎</button>
         </span>
       </div>
+      <div class="presence-list is-hidden" id="presenceList"></div>
       <div class="log-scroll" id="logScroll"></div>
     </div>
 
@@ -360,6 +372,7 @@ const SYNC = {
   key: 'sb_publishable_jEtOD6hBDwDLrnSYPAbLxw_tqygtuPc',
   table: 'rb_kills',
   logTable: 'rb_log',
+  presenceTable: 'rb_presence',
   pollMs: 15000
 };
 
@@ -492,7 +505,7 @@ async function runSync(){
     renderSync();
   }
   /* Лог тянем/отправляем отдельно: его недоступность не должна ломать таймеры. */
-  if (syncEnabled()){ pushLogs().then(fetchLog, fetchLog); }
+  if (syncEnabled()){ pushLogs().then(fetchLog, fetchLog); fetchPresence(); }
 }
 function applyRemoteRows(rows){
   if (!Array.isArray(rows)) return;
@@ -601,6 +614,7 @@ function askActor(){
   if (v === null) return false;
   settings.actor = v.trim().slice(0, 24);
   saveSet(); renderActor(); renderLog();
+  if (syncEnabled()) beatPresence();   /* сразу видно новое имя у остальных */
   return true;
 }
 
@@ -723,6 +737,89 @@ function applyLogToggle(){
   if (col) col.classList.toggle('is-hidden', !settings.logOn);
   if (btn) btn.classList.toggle('off', !settings.logOn);
   if (settings.logOn) resizeMap();
+}
+
+/* ---------- кто на связи ----------
+   Каждый открытый браузер раз в 45 секунд ставит отметку времени в rb_presence.
+   На связи считаем тех, кто отметился за последние 2 минуты. Имена — как в логе.
+*/
+const LS_CLIENT = 'l2gamma.rb.clientId.v1';
+const PRESENCE_TTL  = 120000;
+const PRESENCE_BEAT = 45000;
+
+let presence = [];
+let presenceMissing = false;
+let presenceBeatTimer = null;
+
+function clientId(){
+  let id = null;
+  try { id = localStorage.getItem(LS_CLIENT); } catch(e){}
+  if (!id){
+    id = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    try { localStorage.setItem(LS_CLIENT, id); } catch(e){}
+  }
+  return id;
+}
+async function beatPresence(){
+  if (!syncEnabled()) return;
+  try {
+    await syncReq('?on_conflict=id', 'POST',
+      [{ id: clientId(), name: actorName(), seen_at: Date.now() }],
+      'resolution=merge-duplicates,return=minimal', SYNC.presenceTable);
+    if (presenceMissing){ presenceMissing = false; renderPresence(); }
+  } catch(e){
+    if (/нет таблицы/.test(e.message || '')){ presenceMissing = true; renderPresence(); }
+  }
+}
+async function fetchPresence(){
+  if (!syncEnabled()) return;
+  try {
+    const since = Date.now() - PRESENCE_TTL;
+    const res = await syncReq('?select=id,name,seen_at&seen_at=gte.' + since + '&order=seen_at.desc',
+      'GET', undefined, undefined, SYNC.presenceTable);
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return;
+    presence = rows.map(r=>({ id: r.id, name: r.name || 'гость', seen_at: Number(r.seen_at) || 0 }));
+    if (presenceMissing){ presenceMissing = false; }
+    renderPresence();
+  } catch(e){
+    if (/нет таблицы/.test(e.message || '')){ presenceMissing = true; renderPresence(); }
+  }
+}
+function agoLabel(ms){
+  const d = Date.now() - ms;
+  if (d < 20000) return 'сейчас';
+  if (d < 60000) return Math.floor(d/1000) + 'с назад';
+  if (d < 3600000) return Math.floor(d/60000) + 'м назад';
+  return Math.floor(d/3600000) + 'ч назад';
+}
+function renderPresence(){
+  const btn = $('presenceBtn'), cnt = $('presenceCount'), list = $('presenceList');
+  if (!btn || !cnt) return;
+  if (!syncEnabled() || presenceMissing){
+    btn.classList.add('is-hidden');
+    if (list) list.classList.add('is-hidden');
+    return;
+  }
+  btn.classList.remove('is-hidden');
+  cnt.textContent = presence.length;
+  btn.title = presence.length
+    ? 'Сейчас на связи: ' + presence.map(p=>p.name).join(', ')
+    : 'Никого, кроме тебя, сейчас нет';
+  if (list && !list.classList.contains('is-hidden')){
+    const me = clientId();
+    list.innerHTML = presence.length
+      ? presence.map(p=>`<div class="prow${p.id === me ? ' me' : ''}">`
+          + `<span class="pn">${esc(p.name)}${p.id === me ? ' (ты)' : ''}</span>`
+          + `<span class="pt">${esc(agoLabel(p.seen_at))}</span></div>`).join('')
+      : `<div class="log-empty">Сейчас никого, кроме тебя.</div>`;
+  }
+}
+function togglePresenceList(){
+  const list = $('presenceList'); if (!list) return;
+  const show = list.classList.contains('is-hidden');
+  list.classList.toggle('is-hidden', !show);
+  if (show){ fetchPresence(); renderPresence(); }
 }
 
 /* ---------- статистика: история убийств и паттерны ----------
@@ -1483,6 +1580,8 @@ function tick(){
     }
   }
   updateLive();
+  /* подписи «Nс назад» в списке на связи не должны застывать */
+  if (!$('presenceList').classList.contains('is-hidden')) renderPresence();
 }
 function updateLive(){
   const now = Date.now();
@@ -1614,11 +1713,13 @@ renderSync();
 renderActor();
 applyLogToggle();
 renderLog();
+renderPresence();
 $('logBtn').addEventListener('click', ()=>{
   settings.logOn = !settings.logOn;
   saveSet(); applyLogToggle();
 });
 $('actorBtn').addEventListener('click', askActor);
+$('presenceBtn').addEventListener('click', togglePresenceList);
 $('statsBtn').addEventListener('click', ()=>openStats(statsSel));
 $('statsClose').addEventListener('click', closeStats);
 $('statsRefresh').addEventListener('click', ()=>{ loadKills(true); });
@@ -1640,9 +1741,11 @@ $('syncBtn').addEventListener('click', ()=>{
 });
 if (syncEnabled()){
   runSync();
+  beatPresence();
   setInterval(runSync, SYNC.pollMs);
-  window.addEventListener('online', runSync);
-  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) runSync(); });
+  setInterval(beatPresence, PRESENCE_BEAT);
+  window.addEventListener('online', ()=>{ runSync(); beatPresence(); });
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden){ runSync(); beatPresence(); } });
 }
 
 setInterval(tick, 1000);
