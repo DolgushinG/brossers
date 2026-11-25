@@ -68,22 +68,26 @@ const SYNC = {
 
 Как выложить в интернет (чтобы была ссылка)
 -------------------------------------------
-Статика, сервер не нужен. GitHub Pages, без установки git — через сайт:
+УЖЕ СДЕЛАНО — сайт опубликован:
+  https://dolgushing.github.io/brossers/
+Репозиторий: https://github.com/DolgushinG/brossers (ветка master, GitHub Pages — из корня).
 
-1. Зарегистрируйся на https://github.com (если ещё нет аккаунта).
-2. New repository → имя, например raidbosses → Public → Create repository.
-3. На странице репозитория: «uploading an existing file» → перетащи два файла:
-   index.html и map-lu4.webp (map обязательна, иначе карта будет пустой) → Commit changes.
-4. Settings (в репозитории) → Pages → Source: «Deploy from a branch» →
-   Branch: main, папка / (root) → Save.
-5. Через 1-2 минуты ссылка: https://ТВОЙ-НИК.github.io/raidbosses/
-   Эту ссылку кидай в Discord/Telegram — открывается с телефона и с ПК.
+Как обновить файлы потом (из этой папки, git уже установлен):
 
-Обновить файл потом: в репозитории открыть index.html → карандаш/Upload file → закоммитить.
-Ссылка не меняется.
+  cd C:\Users\Dolgu\Downloads\raidbosses-lu4
+  git add -A
+  git commit -m "что поменял"
+  git push
 
-Если Pages не подходит, равноценная замена: Cloudflare Pages или Netlify Drop
-(перетащить папку с двумя файлами, ссылка будет своя).
+Через 1-2 минуты изменения появятся по той же ссылке. Ссылка не меняется.
+
+Если понадобится выкладывать с нуля (другой репозиторий):
+1. Создать публичный репозиторий на github.com (на бесплатном тарифе Pages из приватного не работает).
+2. git remote add origin https://github.com/ТВОЙ-НИК/ИМЯ.git
+3. git push -u origin master
+4. Settings → Pages → Source: Deploy from a branch → ветка master, папка / (root) → Save.
+
+Важно: в репозитории должны лежать index.html И map-lu4.webp в корне, иначе карта будет пустой.
 
 Как это работает внутри (чтобы не было сюрпризов)
 -------------------------------------------------
