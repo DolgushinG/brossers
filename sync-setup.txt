@@ -24,11 +24,13 @@
 2. New project: имя любое (например raidbosses), пароль БД любой, регион ближе к тебе.
 3. Дождись, пока проект создастся (1-2 минуты).
 
-Шаг 2. Таблица
+Шаг 2. Таблицы
 --------------
-(уже создана — rb_kills с политиками read/insert/update)
+(rb_kills уже создана. Осталось создать rb_log — см. блок «ТОЛЬКО ЛОГ» ниже)
 1. В проекте слева открой: SQL Editor → New query.
-2. Вставь целиком то, что ниже, и нажми Run.
+2. Если настраиваешь с нуля — вставь ОБА блока ниже и нажми Run.
+   Если rb_kills уже есть (твой случай) — вставь ТОЛЬКО блок «ТОЛЬКО ЛОГ».
+   (Повторный запуск первого блока даст ошибку «policy already exists» и ничего не испортит.)
 
 -- ---------- начало SQL ----------
 create table if not exists public.rb_kills (
@@ -47,6 +49,28 @@ create policy "rb read"   on public.rb_kills for select using (true);
 create policy "rb insert" on public.rb_kills for insert with check (true);
 create policy "rb update" on public.rb_kills for update using (true) with check (true);
 -- ---------- конец SQL ----------
+
+-- ---------- начало SQL: ТОЛЬКО ЛОГ ----------
+-- журнал событий: кто когда что сделал (только чтение и добавление)
+create table if not exists public.rb_log (
+  id        bigserial primary key,
+  at        bigint not null,          -- время события, мс
+  action    text   not null,          -- kill / time / fixed / check / reset / resetAll / import
+  boss_id   text,
+  boss_name text,
+  actor     text,                     -- имя игрока
+  detail    text
+);
+
+create index if not exists rb_log_at_idx on public.rb_log (at desc);
+
+alter table public.rb_log enable row level security;
+
+drop policy if exists "log read" on public.rb_log;
+drop policy if exists "log insert" on public.rb_log;
+create policy "log read"   on public.rb_log for select using (true);
+create policy "log insert" on public.rb_log for insert with check (true);
+-- ---------- конец SQL: ТОЛЬКО ЛОГ ----------
 
 Шаг 3. Ключи в index.html
 -------------------------

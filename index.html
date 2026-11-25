@@ -50,6 +50,25 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
 .main{display:flex;gap:12px;height:calc(100vh - 200px);min-height:460px}
 .map-col{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:8px}
 .list-col{flex:0 0 380px;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.log-col{flex:0 0 290px;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.log-col.is-hidden{display:none}
+.log-head{padding:10px 12px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px;color:var(--dim);flex:0 0 auto;display:flex;align-items:center;gap:6px}
+.log-head .who{margin-left:auto;display:flex;align-items:center;gap:4px;min-width:0}
+.log-head .who b{color:var(--txt);font-weight:600;font-size:12px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-head button{padding:2px 6px;font-size:11px;background:transparent;color:var(--dim);border-color:transparent}
+.log-head button:hover{color:var(--txt);border-color:var(--line)}
+.log-scroll{flex:1 1 auto;overflow-y:auto;padding:6px 10px 10px}
+.log-item{display:flex;gap:7px;padding:5px 0;border-bottom:1px solid rgba(46,55,68,.5);font-size:12px;line-height:1.35}
+.log-item:last-child{border-bottom:none}
+.log-item .lt{color:var(--dim2);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;flex:0 0 42px;padding-top:1px}
+.log-item .lb{min-width:0;flex:1 1 auto;overflow-wrap:anywhere}
+.log-item .actor{color:var(--accent);font-weight:600}
+.log-item .bn{color:var(--txt)}
+.log-item .ld{color:var(--dim2)}
+.log-item.pending{opacity:.62}
+.log-empty{color:var(--dim2);font-size:12px;padding:8px 2px;line-height:1.5}
+.log-warn{color:var(--amber);font-size:11.5px;padding:8px 2px;line-height:1.5}
+#logBtn.off{opacity:.55}
 .list-head{padding:10px 12px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px;color:var(--dim);flex:0 0 auto}
 .list-scroll{flex:1 1 auto;overflow-y:auto;padding:10px 12px}
 
@@ -138,8 +157,10 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
 
 @media (max-width: 900px){
   .main{flex-direction:column;height:auto}
-  .map-stage{height:62vh}
-  .list-col{flex:none;height:60vh}
+  .map-stage{height:62vh;order:1}
+  .map-col{order:1}
+  .log-col{order:2;flex:none;height:34vh}
+  .list-col{order:3;flex:none;height:60vh}
 }
 </style>
 </head>
@@ -176,12 +197,23 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
     <button id="save" class="ghost" title="Скачать файл с отметками (чтобы скинуть другу)">💾 Сохранить</button>
     <button id="load" class="ghost" title="Загрузить отметки из файла">📂 Загрузить</button>
     <button id="syncBtn" class="ghost" title="Общие таймеры">☁ синк</button>
+    <button id="logBtn" class="ghost" title="Показать/скрыть лог событий">📜 Лог</button>
     <span class="spacer"></span>
     <span class="counts" id="counts"></span>
     <button id="resetAll" class="ghost danger">↺ Сбросить все</button>
   </div>
 
   <div class="main">
+    <div class="log-col" id="logCol">
+      <div class="log-head">Лог
+        <span class="who" title="Твоё имя в логе — клик, чтобы поменять">
+          <b id="actorName">гость</b>
+          <button id="actorBtn" title="Поменять имя">✎</button>
+        </span>
+      </div>
+      <div class="log-scroll" id="logScroll"></div>
+    </div>
+
     <div class="map-col">
       <div class="map-stage" id="mapStage">
         <div class="map-inner" id="mapInner">
@@ -210,6 +242,7 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
           Кнопка «🕓 Убил в…» / «🕓 Время убийства» — вписать время смерти вручную (таймер пересчитается).
           Фильтры, поиск, сортировка и положение карты запоминаются между запусками.
           Кнопка «☁» — общие таймеры для всех, кто открыл ссылку (настройка в sync-setup.txt).
+          Слева — лог: кто и когда убил, проверил или сбросил. Своё имя — кнопка «✎».
         </div>
       </div>
     </div>
@@ -242,6 +275,8 @@ const MAP_W = 3072, MAP_H = 4096;
 
 const LS_STATE = 'l2gamma.rb.state.v1';
 const LS_SET   = 'l2gamma.rb.settings.v1';
+const LS_LOG_PEND = 'l2gamma.rb.logPending.v1';
+const LS_LOG_SRV  = 'l2gamma.rb.logServer.v1';
 
 /* ---------- общие таймеры (Supabase) ----------
    Пока url и key пустые — приложение работает как раньше, только локально.
@@ -253,6 +288,7 @@ const SYNC = {
   url: 'https://zxvjorbsaucgijlealuu.supabase.co',
   key: 'sb_publishable_jEtOD6hBDwDLrnSYPAbLxw_tqygtuPc',
   table: 'rb_kills',
+  logTable: 'rb_log',
   pollMs: 15000
 };
 
@@ -260,7 +296,7 @@ const $ = id => document.getElementById(id);
 const bossById = id => BOSSES.find(b => b.i === id);
 
 let state = loadJSON(LS_STATE, {});
-let settings = Object.assign({ sound:true, preWarn:0 }, loadJSON(LS_SET, {}));
+let settings = Object.assign({ sound:true, preWarn:0, actor:'', logOn:true }, loadJSON(LS_SET, {}));
 settings.ui = Object.assign({ q:'', lo:'', hi:'', charLv:'', spread:7, status:'all', sort:'level' }, settings.ui || {});
 let modalCtx = null;
 let currentDetailId = null;
@@ -330,14 +366,14 @@ function nextU(id){
   saveSet();
   return u;
 }
-function syncUrl(qs){ return SYNC.url.replace(/\/+$/,'') + '/rest/v1/' + SYNC.table + qs; }
-async function syncReq(qs, method, body, prefer){
+function syncUrl(qs, table){ return SYNC.url.replace(/\/+$/,'') + '/rest/v1/' + (table || SYNC.table) + qs; }
+async function syncReq(qs, method, body, prefer, table){
   const headers = { apikey: SYNC.key, 'Content-Type': 'application/json' };
   /* Ключ нового формата (sb_publishable_…) работает только в apikey,
      Bearer с ним даёт 401. Старый JWT-ключ (eyJ…) нужен в обоих местах. */
   if (SYNC.key.indexOf('eyJ') === 0) headers.Authorization = 'Bearer ' + SYNC.key;
   if (prefer) headers.Prefer = prefer;
-  const res = await fetch(syncUrl(qs), {
+  const res = await fetch(syncUrl(qs, table), {
     method: method || 'GET',
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -345,7 +381,7 @@ async function syncReq(qs, method, body, prefer){
   });
   if (!res.ok){
     if (res.status === 401 || res.status === 403) throw new Error('ключ не подошёл (проверь SYNC.key)');
-    if (res.status === 404) throw new Error('нет таблицы ' + SYNC.table + ' (выполни SQL из sync-setup.txt)');
+    if (res.status === 404) throw new Error('нет таблицы ' + (table || SYNC.table) + ' (выполни SQL из sync-setup.txt)');
     throw new Error('HTTP ' + res.status);
   }
   return res;
@@ -384,6 +420,8 @@ async function runSync(){
     syncBusy = false;
     renderSync();
   }
+  /* Лог тянем/отправляем отдельно: его недоступность не должна ломать таймеры. */
+  if (syncEnabled()){ pushLogs().then(fetchLog, fetchLog); }
 }
 function applyRemoteRows(rows){
   if (!Array.isArray(rows)) return;
@@ -441,6 +479,156 @@ function renderSync(){
   b.textContent = '☁ общие' + (syncLast ? ' · ' + fmtClock(syncLast) : '');
   b.title = 'Общие таймеры включены. Клик — синхронизировать сейчас.'
     + (syncLast ? '\nПоследний обмен: ' + new Date(syncLast).toLocaleString('ru-RU') : '');
+}
+
+/* ---------- журнал событий ----------
+   Строки уходят в таблицу SYNC.logTable (только INSERT и SELECT: правки/удаления в лог не нужны).
+   Без связи копятся в localStorage и уезжают при следующем обмене.
+*/
+let logPending = loadJSON(LS_LOG_PEND, []);
+let logServer  = loadJSON(LS_LOG_SRV, []);
+let logMissing = false;
+let logBusy = false;
+let logPushTimer = null;
+
+const LOG_META = {
+  kill:     { icon:'🔪', text:'убил' },
+  time:     { icon:'🕓', text:'вписал время' },
+  fixed:    { icon:'🕓', text:'задал респ' },
+  check:    { icon:'✓',  text:'проверил' },
+  reset:    { icon:'↺',  text:'сброс' },
+  resetAll: { icon:'↺',  text:'сбросил всё' },
+  import:   { icon:'📂', text:'загрузил файл' }
+};
+
+function saveLogs(){
+  dedupeLog();
+  try {
+    localStorage.setItem(LS_LOG_PEND, JSON.stringify(logPending.slice(-100)));
+    localStorage.setItem(LS_LOG_SRV, JSON.stringify(logServer.slice(-300)));
+  } catch(e){}
+}
+/* Одна и та же запись может прийти и из ответа на POST, и из следующего GET — склеиваем. */
+function dedupeLog(){
+  const seen = new Set();
+  const out = [];
+  logServer.slice().sort((a,b) => (b.at||0) - (a.at||0)).forEach(e=>{
+    const key = (e.id !== null && e.id !== undefined)
+      ? 'i' + e.id
+      : ['k', e.at, e.action, e.boss_id, e.actor, e.detail].join('|');
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(e);
+  });
+  logServer = out;
+}
+function actorName(){ return (settings.actor || '').trim() || 'гость'; }
+function renderActor(){ const el = $('actorName'); if (el) el.textContent = actorName(); }
+function askActor(){
+  const v = prompt('Твоё имя для лога (его увидят все, у кого есть ссылка):', settings.actor || '');
+  if (v === null) return false;
+  settings.actor = v.trim().slice(0, 24);
+  saveSet(); renderActor(); renderLog();
+  return true;
+}
+
+function logEvent(action, boss, detail){
+  logPending.push({
+    at: Date.now(),
+    action,
+    boss_id: boss ? boss.i : '',
+    boss_name: boss ? boss.n : '',
+    actor: actorName(),
+    detail: detail || ''
+  });
+  if (logPending.length > 100) logPending = logPending.slice(-100);
+  saveLogs(); renderLog();
+  clearTimeout(logPushTimer);
+  logPushTimer = setTimeout(pushLogs, 400);
+}
+
+function logRow(e){
+  return { at:e.at, action:e.action, boss_id:e.boss_id, boss_name:e.boss_name, actor:e.actor, detail:e.detail };
+}
+async function pushLogs(){
+  if (!syncEnabled() || logBusy || !logPending.length) return;
+  logBusy = true;
+  try {
+    const sent = logPending.slice(0, 50);
+    const res = await syncReq('', 'POST', sent.map(logRow), 'return=representation', SYNC.logTable);
+    let rows = [];
+    try { rows = await res.json(); } catch(e){ rows = []; }
+    const ok = Array.isArray(rows) && rows.length === sent.length;
+    sent.forEach((e, idx)=>{
+      logServer.push(ok ? { id: rows[idx].id, at:e.at, action:e.action, boss_id:e.boss_id, boss_name:e.boss_name, actor:e.actor, detail:e.detail }
+                        : { at:e.at, action:e.action, boss_id:e.boss_id, boss_name:e.boss_name, actor:e.actor, detail:e.detail });
+    });
+    logPending = logPending.slice(sent.length);
+    logMissing = false;
+    if (logServer.length > 300) logServer = logServer.slice(-300);
+    saveLogs(); renderLog();
+  } catch(e){
+    if (/нет таблицы/.test(e.message || '')) { logMissing = true; renderLog(); }
+  } finally {
+    logBusy = false;
+  }
+}
+async function fetchLog(){
+  if (!syncEnabled()) return;
+  try {
+    const res = await syncReq('?select=id,at,action,boss_id,boss_name,actor,detail&order=at.desc&limit=200', 'GET', undefined, undefined, SYNC.logTable);
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return;
+    logServer = rows.map(r=>({
+      id: r.id, at: Number(r.at) || 0, action: r.action || '',
+      boss_id: r.boss_id || '', boss_name: r.boss_name || '',
+      actor: r.actor || '', detail: r.detail || ''
+    }));
+    logMissing = false;
+    saveLogs(); renderLog();
+  } catch(e){
+    if (/нет таблицы/.test(e.message || '')) { logMissing = true; renderLog(); }
+  }
+}
+function logTime(ms){
+  const d = new Date(ms), now = new Date();
+  const hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  return sameDay ? hm : pad(d.getDate()) + '.' + pad(d.getMonth()+1) + ' ' + hm;
+}
+function renderLog(){
+  const box = $('logScroll'); if (!box) return;
+  let html = '';
+  if (logMissing){
+    html += `<div class="log-warn">Лог не настроен: в Supabase нет таблицы <b>${esc(SYNC.logTable)}</b>.
+      Выполни SQL из sync-setup.txt — и записи пойдут.</div>`;
+  }
+  const list = [];
+  logServer.forEach(e => list.push({ e, pending:false }));
+  logPending.forEach(e => list.push({ e, pending:true }));
+  list.sort((a,b) => (b.e.at||0) - (a.e.at||0));
+  const items = list.slice(0, 100);
+  if (!items.length){
+    html += `<div class="log-empty">Пока пусто. Здесь будет видно, кто и когда убил босса,
+      проверил спавн или сбросил таймер.</div>`;
+  } else {
+    html += items.map(({ e, pending })=>{
+      const meta = LOG_META[e.action] || { icon:'•', text: esc(e.action) };
+      const boss = e.boss_name ? ` <span class="bn">${esc(e.boss_name)}</span>` : '';
+      const det = e.detail ? ` <span class="ld">${esc(e.detail)}</span>` : '';
+      return `<div class="log-item${pending?' pending':''}" title="${pending?'ещё не отправлено / не пришло с сервера':logTime(e.at)}">`
+        + `<span class="lt">${esc(logTime(e.at||0))}</span>`
+        + `<span class="lb"><span class="actor">${esc(e.actor||'гость')}</span> ${meta.icon} ${meta.text}${boss}${det}</span>`
+        + `</div>`;
+    }).join('');
+  }
+  box.innerHTML = html;
+}
+function applyLogToggle(){
+  const col = $('logCol'), btn = $('logBtn');
+  if (col) col.classList.toggle('is-hidden', !settings.logOn);
+  if (btn) btn.classList.toggle('off', !settings.logOn);
+  if (settings.logOn) resizeMap();
 }
 
 /* ---------- helpers ---------- */
@@ -721,16 +909,20 @@ function markKilled(id){
   unlockAudio();
   const b = bossById(id);
   if (b.f){ openTimeModal(id, 'fixed'); return; }
+  if (!settings.actor) askActor();
   const now = Date.now();
   state[id] = freshState(id, now, now + b.b*60000, now + (b.b + b.v)*60000, []);
   save(); renderAll(); markDirty(id);
+  logEvent('kill', b);
 }
 function checksOf(s){ return s.ch || (s.ch = []); }
 function checkBoss(id){
   const s = state[id]; if (!s) return;
+  if (!settings.actor) askActor();
   checksOf(s).push(Date.now());
   s.u = nextU(id);
   save(); renderAll(); markDirty(id);
+  logEvent('check', bossById(id));
 }
 function forgetBoss(id){
   const u = nextU(id);
@@ -740,14 +932,19 @@ function forgetBoss(id){
   save(); saveSet();
   markDirty(id);
 }
-function resetBoss(id){ forgetBoss(id); renderAll(); }
+function resetBoss(id){
+  forgetBoss(id); renderAll();
+  logEvent('reset', bossById(id));
+}
 function resetAll(){
   if (Object.keys(state).length === 0) return;
   if (!confirm('Сбросить все отметки об убийствах?')) return;
   const ids = new Set(Object.keys(state));
   syncKnown.forEach(id => ids.add(id));
+  const n = Object.keys(state).length;
   ids.forEach(id => forgetBoss(id));
   renderAll();
+  logEvent('resetAll', null, n + ' отмет.');
 }
 function saveState(){
   const payload = { app:'l2gamma-rb', v:1, exported: Date.now(), state, settings };
@@ -783,6 +980,7 @@ function onFilePicked(e){
       save(); saveSet(); applySettingsToUI(); restoreMapView();
       if (settings.detail && bossById(settings.detail)) showDetail(settings.detail); else hideDetail();
       renderAll();
+      logEvent('import', null, n + ' отмет.');
     } catch(err){
       alert('Не удалось прочитать файл. Похоже, это не файл сохранения.');
     }
@@ -950,12 +1148,15 @@ $('modalOk').onclick = ()=>{
   if (!b){ $('modal').classList.remove('show'); modalCtx = null; return; }
   const prev = state[modalCtx.id];
   const mid = modalCtx.id;
+  if (!settings.actor) askActor();
   if (modalCtx.mode === 'killed'){
     if (t > Date.now() + 60*1000){ alert('Время убийства не может быть в будущем.'); return; }
     state[mid] = freshState(mid, t, t + b.b*60000, t + (b.b + b.v)*60000, prev && prev.ch);
+    logEvent('time', b, 'убит в ' + fmtClock(t));
   } else {
     const k = (prev && prev.k) ? Math.min(prev.k, t) : Date.now();
     state[mid] = freshState(mid, k, t, t, prev && prev.ch);
+    logEvent('fixed', b, 'респ ' + fmtClock(t));
   }
   save(); renderAll(); markDirty(mid);
   $('modal').classList.remove('show');
@@ -976,6 +1177,14 @@ else if ('Notification' in window && Notification.permission === 'denied') $('pe
 
 /* ---------- sync init ---------- */
 renderSync();
+renderActor();
+applyLogToggle();
+renderLog();
+$('logBtn').addEventListener('click', ()=>{
+  settings.logOn = !settings.logOn;
+  saveSet(); applyLogToggle();
+});
+$('actorBtn').addEventListener('click', askActor);
 $('syncBtn').addEventListener('click', ()=>{
   if (!syncEnabled()){ alert('Общие таймеры не настроены.\nОткрой sync-setup.txt — там по шагам, что вписать в index.html.'); return; }
   runSync();
