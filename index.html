@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Рейд-боссы — карта и таймер респа (Lu4/Gamma)</title>
+<style>
+:root{
+  --bg:#171b22; --bg2:#1e242e; --bg3:#262e3a; --line:#2e3744;
+  --txt:#e6e9ef; --dim:#8b95a5; --dim2:#5c6674;
+  --accent:#4da3ff; --green:#3ecf6a; --amber:#f5a623; --red:#ff5b6a; --blue:#4da3ff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--txt);
+  font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1500px;margin:0 auto;padding:12px 14px 30px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:2px}
+header.top h1{font-size:20px;margin:0;font-weight:700}
+header.top .dim{color:var(--dim);font-weight:500}
+.sub{color:var(--dim);font-size:12.5px;margin:2px 0 10px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.controls input[type=search],.controls input[type=number]{
+  background:var(--bg2);border:1px solid var(--line);color:var(--txt);
+  border-radius:8px;padding:8px 10px;font-size:13px;outline:none;min-width:0;
+}
+.controls input[type=search]{flex:1 1 200px}
+.controls input:focus{border-color:var(--accent)}
+.lv{display:flex;align-items:center;gap:4px;color:var(--dim);font-size:12px}
+.lv input[type=number]{width:44px;text-align:center;padding-left:6px;padding-right:6px}
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+select{background:var(--bg2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 10px;font-size:13px;outline:none}
+button{background:var(--bg3);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer;transition:.12s}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#0b0e12;font-weight:600}
+button.ghost{background:transparent}
+button.danger:hover{border-color:var(--red);color:var(--red)}
+#syncBtn.bad{color:var(--red);border-color:var(--red)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.toolbar .spacer{flex:1}
+.counts{color:var(--dim);font-size:12px}
+
+/* ---- two-column layout ---- */
+.main{display:flex;gap:12px;height:calc(100vh - 200px);min-height:460px}
+.map-col{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:8px}
+.list-col{flex:0 0 380px;min-width:0;min-height:0;display:flex;flex-direction:column;background:var(--bg2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.list-head{padding:10px 12px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px;color:var(--dim);flex:0 0 auto}
+.list-scroll{flex:1 1 auto;overflow-y:auto;padding:10px 12px}
+
+/* ---- map ---- */
+.map-stage{
+  position:relative;overflow:hidden;background:#0d1117;
+  border:1px solid var(--line);border-radius:12px;
+  flex:1 1 auto;min-height:0;touch-action:none;cursor:grab;
+}
+.map-stage.dragging{cursor:grabbing}
+.map-inner{position:absolute;left:0;top:0;width:3072px;height:4096px;transform-origin:0 0;will-change:transform}
+.map-inner img{position:absolute;left:0;top:0;width:100%;height:100%;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none}
+.markers{position:absolute;left:0;top:0;width:100%;height:100%}
+.marker{
+  position:absolute;transform:translate(-50%,-50%) scale(var(--invS,1));transform-origin:50% 50%;
+  width:18px;height:18px;border-radius:50%;
+  border:2px solid rgba(255,255,255,.95);cursor:pointer;box-shadow:0 0 6px rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;font-size:12px;line-height:1;color:#fff;
+}
+.marker:hover{z-index:6;box-shadow:0 0 0 3px rgba(255,255,255,.4), 0 0 6px rgba(0,0,0,.8)}
+.marker .mlabel{
+  position:absolute; left:12px; top:50%;
+  transform: translateY(-50%);
+  background:rgba(11,14,18,.92); border:1px solid var(--line); border-radius:5px;
+  padding:1px 6px; font-size:11px; line-height:1.25; white-space:nowrap; color:var(--txt);
+  pointer-events:none; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+.m-alive{background:#3ecf6a}
+.m-pending{background:#4da3ff}
+.m-window{background:#f5a623}
+.m-up{background:#ff5b6a}
+.legend{display:flex;flex-wrap:wrap;gap:12px;align-items:center;color:var(--dim);font-size:12px}
+.legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.7);margin-right:5px;vertical-align:-1px}
+.map-hint{color:var(--dim2);font-size:11.5px;line-height:1.5}
+
+/* ---- detail panel ---- */
+.detail{
+  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:40;
+  width:min(430px,92vw);background:var(--bg2);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.5);
+}
+.detail-close{position:absolute;right:10px;top:10px;background:transparent;border:none;color:var(--dim);font-size:16px;cursor:pointer;padding:2px 6px}
+.detail-close:hover{color:var(--txt)}
+.detail .row1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding-right:24px}
+.is-hidden{display:none !important}
+
+/* ---- list cards ---- */
+.list{display:flex;flex-direction:column;gap:8px}
+.card{background:var(--bg3);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.card.st-up{border-color:var(--red);background:linear-gradient(180deg,rgba(255,91,106,.08),rgba(255,91,106,0) 70%),var(--bg3)}
+.card.st-window{border-color:var(--amber)}
+.card.st-pending{border-color:var(--accent)}
+.card .row1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.name{font-weight:600;font-size:14px}
+.loc{color:var(--dim);font-size:12px}
+.resp{color:var(--dim2);font-size:11.5px}
+.badge{font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:20px;white-space:nowrap}
+.b-alive{background:rgba(62,207,106,.15);color:var(--green)}
+.b-pending{background:rgba(77,163,255,.15);color:var(--blue)}
+.b-window{background:rgba(245,166,35,.15);color:var(--amber)}
+.b-up{background:rgba(255,91,106,.18);color:var(--red)}
+.timer{margin-top:4px;font-size:12.5px}
+.timer .big{font-size:14px;font-weight:600}
+.timer .window{color:var(--dim);font-size:11.5px}
+.timer .overdue{color:var(--red)}
+.chk{color:var(--dim);font-size:11.5px;margin-top:5px}
+.chk b{color:var(--txt);font-weight:600}
+.chk-list{margin-top:6px;max-height:120px;overflow-y:auto;color:var(--dim);font-size:12px}
+.chk-list div{padding:1px 0}
+.actions{margin-top:6px;display:flex;gap:8px;flex-wrap:wrap}
+.card .side{display:flex;align-items:center;gap:8px;margin-top:6px}
+.card .time{color:var(--dim);font-size:11.5px}
+.note{color:var(--dim2);font-size:11px;margin-top:12px;line-height:1.5}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+.modal.show{display:flex}
+.modal .box{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:18px;width:min(360px,92vw)}
+.modal h3{margin:0 0 6px;font-size:16px}
+.modal p{color:var(--dim);font-size:12.5px;margin:0 0 12px}
+.modal input[type=datetime-local]{width:100%;background:var(--bg3);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px;font-size:13px}
+.modal .quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.modal .quick button{padding:5px 9px;font-size:12px;background:var(--bg3);color:var(--dim)}
+.modal .quick button:hover{color:var(--txt)}
+.modal .row{margin-top:12px;display:flex;gap:8px;justify-content:flex-end}
+
+@media (max-width: 900px){
+  .main{flex-direction:column;height:auto}
+  .map-stage{height:62vh}
+  .list-col{flex:none;height:60vh}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Рейд-боссы</h1>
+    <span class="dim" id="total">—</span>
+  </header>
+  <div class="sub">Клик по точке — детали и «убил»; время смерти можно вписать вручную. У отмеченных боссов на карте виден таймер до респа.</div>
+
+  <div class="controls">
+    <input type="search" id="q" placeholder="Поиск по имени или локации…" autocomplete="off">
+    <div class="lv">ур. <input type="number" id="lo" min="20" max="99" placeholder="от"> <span class="dim">–</span> <input type="number" id="hi" min="20" max="99" placeholder="до"></div>
+    <div class="lv" title="Под персонажа: показывать боссов в пределах ±N уровней от моего уровня">мой ур. <input type="number" id="charLv" min="1" max="99" placeholder="—"> <span class="dim">±</span> <input type="number" id="spread" min="0" max="20" value="7"></div>
+    <select id="status">
+      <option value="all">все</option>
+      <option value="alive">живые</option>
+      <option value="pending">на таймере</option>
+      <option value="window">возможен респ</option>
+      <option value="up">респ / готов</option>
+    </select>
+    <select id="sort" title="Сортировка списка">
+      <option value="level">сорт: уровень</option>
+      <option value="respawn">сорт: респ раньше</option>
+      <option value="name">сорт: имя</option>
+    </select>
+  </div>
+
+  <div class="toolbar">
+    <button id="perm" class="ghost">🔔 Включить уведомления</button>
+    <button id="sound" class="ghost">🔊 Звук: вкл</button>
+    <label class="lv" style="gap:6px">предупредить за <input type="number" id="prewarn" min="0" max="120" value="0" style="width:46px"> мин</label>
+    <button id="save" class="ghost" title="Скачать файл с отметками (чтобы скинуть другу)">💾 Сохранить</button>
+    <button id="load" class="ghost" title="Загрузить отметки из файла">📂 Загрузить</button>
+    <button id="syncBtn" class="ghost" title="Общие таймеры">☁ синк</button>
+    <span class="spacer"></span>
+    <span class="counts" id="counts"></span>
+    <button id="resetAll" class="ghost danger">↺ Сбросить все</button>
+  </div>
+
+  <div class="main">
+    <div class="map-col">
+      <div class="map-stage" id="mapStage">
+        <div class="map-inner" id="mapInner">
+          <img id="mapImg" src="map-lu4.webp" alt="Карта мира">
+          <div class="markers" id="markers"></div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:#3ecf6a"></i>жив</span>
+        <span><i class="dot" style="background:#4da3ff"></i>таймер</span>
+        <span><i class="dot" style="background:#f5a623"></i>возможен респ</span>
+        <span><i class="dot" style="background:#ff5b6a"></i>респ</span>
+        <span style="margin-left:auto"><button class="ghost" id="fitBtn">⟳ Весь мир</button></span>
+      </div>
+      <div class="map-hint">Колесо мыши — масштаб · зажать и тянуть — перемещение · клик по точке — детали и «убил».</div>
+    </div>
+
+    <div class="list-col">
+      <div class="list-head">Список <span class="dim" id="listCount"></span></div>
+      <div class="list-scroll">
+        <div class="list" id="list"></div>
+        <div class="note">
+          Окно респа: <b>[база, база + разброс]</b> («6 ± 2 ч» = минимум 6 ч, затем ещё до 2 ч).
+          Таймер считает до минимума, потом «возможен респ», затем «респ!».
+          Боссы с «фикс. респ» (Core, Orfen, Queen Ant) — респ вручную.
+          Кнопка «🕓 Убил в…» / «🕓 Время убийства» — вписать время смерти вручную (таймер пересчитается).
+          Фильтры, поиск, сортировка и положение карты запоминаются между запусками.
+          Кнопка «☁» — общие таймеры для всех, кто открыл ссылку (настройка в sync-setup.txt).
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="detail is-hidden" id="detail">
+  <button class="detail-close" id="detailClose">✕</button>
+  <div id="detailBody"></div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="box">
+    <h3 id="modalName">Время</h3>
+    <p id="modalHint">Укажи время.</p>
+    <input type="datetime-local" id="modalTime">
+    <div class="quick" id="modalQuick"></div>
+    <div class="row">
+      <button class="ghost" id="modalCancel">Отмена</button>
+      <button class="primary" id="modalOk">ОК</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInp" accept=".json,application/json" style="display:none">
+
+<script>
+const BOSSES = [{"i":"25372-discarded-guardian","n":"Discarded Guardian","lv":20,"l":"Elven Ruins","b":360,"v":120,"f":false,"x":1346,"y":3790},{"i":"25378-madness-beast","n":"Madness Beast","lv":20,"l":"Dark Forest","b":360,"v":120,"f":false,"x":579.9,"y":2595.1},{"i":"25375-zombie-lord-ferkel","n":"Zombie Lord Ferkel","lv":20,"l":"Elven Fortress","b":360,"v":120,"f":false,"x":1154.5,"y":2565.7},{"i":"25380-kaysha-herald-of-icarus","n":"Kaysha Herald of Icarus","lv":21,"l":"School of Dark Arts","b":360,"v":120,"f":false,"x":629.1,"y":2349.5},{"i":"25373-malex-herald-of-dagoniel","n":"Malex Herald of Dagoniel","lv":21,"l":"Elven Fortress","b":360,"v":120,"f":false,"x":1058,"y":2539.8},{"i":"25146-serpent-demon-bifrons","n":"Serpent Demon Bifrons","lv":21,"l":"Gludio Territory","b":360,"v":120,"f":false,"x":882.4,"y":3567.7},{"i":"25357-sukar-wererat-chief","n":"Sukar Wererat Chief","lv":21,"l":"Evil Hunting Grounds","b":360,"v":120,"f":false,"x":959.4,"y":2809},{"i":"25001-greyclaw-kutus","n":"Greyclaw Kutus","lv":23,"l":"Abandoned Camp","b":360,"v":120,"f":false,"x":576.2,"y":3062.6},{"i":"25366-kuroboros-priest","n":"Kuroboros\u0027 Priest","lv":23,"l":"Gludio Territory","b":360,"v":120,"f":false,"x":517,"y":3310.5},{"i":"25362-tracker-leader-sharuk","n":"Tracker Leader Sharuk","lv":23,"l":"Gludio Territory","b":360,"v":120,"f":false,"x":566.2,"y":3365.6},{"i":"25060-unrequited-kael","n":"Unrequited Kael","lv":24,"l":"Forgotten Temple","b":360,"v":120,"f":false,"x":531.4,"y":3375.8},{"i":"25426-betrayer-of-urutu-freki","n":"Betrayer of Urutu Freki","lv":25,"l":"Immortal Plateau","b":360,"v":120,"f":false,"x":849.7,"y":1200.5},{"i":"25166-ikuntai","n":"Ikuntai","lv":25,"l":"Ruins of Despair","b":360,"v":120,"f":false,"x":821.8,"y":3103.9},{"i":"25429-mammon-collector-talos","n":"Mammon Collector Talos","lv":25,"l":"Eastern Mining Zone","b":360,"v":120,"f":false,"x":2278.5,"y":347.9},{"i":"25019-pan-dryad","n":"Pan Dryad","lv":25,"l":"Plains of Dion","b":360,"v":120,"f":false,"x":1040.6,"y":3234.3},{"i":"25076-princess-molrang","n":"Princess Molrang","lv":25,"l":"Fellmere Lake","b":360,"v":120,"f":false,"x":526.7,"y":2918.2},{"i":"25369-soul-scavenger","n":"Soul Scavenger","lv":25,"l":"Ruins of Agony","b":360,"v":120,"f":false,"x":641.9,"y":2796.8},{"i":"25149-zombie-lord-crowl","n":"Zombie Lord Crowl","lv":25,"l":"Ruins of Despair","b":360,"v":120,"f":false,"x":890.3,"y":2999.7},{"i":"25365-patriarch-kuroboros","n":"Patriarch Kuroboros","lv":26,"l":"Gludio Territory","b":360,"v":120,"f":false,"x":518.4,"y":3392.6},{"i":"25360-tiger-hornet","n":"Tiger Hornet","lv":26,"l":"Beehive","b":360,"v":120,"f":false,"x":1203.7,"y":3308.9},{"i":"25272-partisan-leader-talakin","n":"Partisan Leader Talakin","lv":28,"l":"Partisan\u0027s Hideaway","b":360,"v":120,"f":false,"x":1354.9,"y":2923.1},{"i":"25038-tirak","n":"Tirak","lv":28,"l":"Forgotten Temple","b":360,"v":120,"f":false,"x":554.4,"y":3360.9},{"i":"25095-elf-renoa","n":"Elf Renoa","lv":29,"l":"Foot of the Mountain","b":360,"v":120,"f":false,"x":701.3,"y":3449.9},{"i":"25188-apepi","n":"Apepi","lv":30,"l":"Field of Silence","b":360,"v":120,"f":false,"x":1647.3,"y":3285.6},{"i":"25112-beleth-s-agent-meana","n":"Beleth\u0027s Agent, Meana","lv":30,"l":"Giran Territory","b":360,"v":120,"f":false,"x":1858.5,"y":3009.2},{"i":"25501-boss-akata","n":"Boss Akata","lv":30,"l":"Tanor Canyon","b":360,"v":120,"f":false,"x":1466.2,"y":3129.9},{"i":"25079-cat-s-eye-bandit","n":"Cat\u0027s Eye Bandit","lv":30,"l":"Partisan\u0027s Hideaway","b":360,"v":120,"f":false,"x":1389.5,"y":2732.7},{"i":"25352-giant-wasteland-basilisk","n":"Giant Wasteland Basilisk","lv":30,"l":"Wasteland","b":360,"v":120,"f":false,"x":858.8,"y":3275.4},{"i":"25169-ragraman","n":"Ragraman","lv":30,"l":"Wasteland","b":360,"v":120,"f":false,"x":575.8,"y":3241.1},{"i":"25004-turek-mercenary-captain","n":"Turek Mercenary Captain","lv":30,"l":"Orc Barracks","b":360,"v":120,"f":false,"x":278.5,"y":2714.5},{"i":"25392-captain-of-queen-s-royal-guards","n":"Captain of Queen\u0027s Royal Guards","lv":32,"l":"Cruma Marshlands","b":360,"v":120,"f":false,"x":1210,"y":2766.9},{"i":"25401-skyla","n":"Skyla","lv":32,"l":"Giran Territory","b":360,"v":120,"f":false,"x":1870.5,"y":2734.8},{"i":"25404-corsair-captain-kylon","n":"Corsair Captain Kylon","lv":33,"l":"Giran Territory","b":360,"v":120,"f":false,"x":1256.2,"y":3399.1},{"i":"25391-nurka-s-messenger","n":"Nurka\u0027s Messenger","lv":33,"l":"Partisan\u0027s Hideaway","b":360,"v":120,"f":false,"x":1328.1,"y":2868.4},{"i":"25128-vuku-grand-seer-gharmash","n":"Vuku Grand Seer Gharmash","lv":33,"l":"Beehive","b":360,"v":120,"f":false,"x":1118.1,"y":3307.3},{"i":"25020-breka-warlock-pastu","n":"Breka Warlock Pastu","lv":34,"l":"Breka\u0027s Stronghold","b":360,"v":120,"f":false,"x":1686.7,"y":2898.1},{"i":"25189-cronos-s-servitor-mumu","n":"Cronos\u0027s Servitor Mumu","lv":34,"l":"Innadril Territory","b":360,"v":120,"f":false,"x":1501.3,"y":3487.6},{"i":"25383-revenant-of-sir-calibus","n":"Revenant of Sir Calibus","lv":34,"l":"Execution Grounds","b":360,"v":120,"f":false,"x":1372.6,"y":3121.5},{"i":"25023-stakato-queen-zyrnna","n":"Stakato Queen Zyrnna","lv":34,"l":"Cruma Marshlands","b":360,"v":120,"f":false,"x":1189.6,"y":2726.5},{"i":"25398-beleth-s-eye","n":"Beleth\u0027s Eye","lv":35,"l":"Plains of Dion","b":360,"v":120,"f":false,"x":1022.9,"y":3381.4},{"i":"25063-chertuba-of-great-soul","n":"Chertuba of Great Soul","lv":35,"l":"Orc Barracks","b":360,"v":120,"f":false,"x":301.6,"y":2835.5},{"i":"25152-flame-lord-shadar","n":"Flame Lord Shadar","lv":35,"l":"Partisan\u0027s Hideaway","b":360,"v":120,"f":false,"x":1314.4,"y":2893.5},{"i":"25354-gargoyle-lord-sirocco","n":"Gargoyle Lord Sirocco","lv":35,"l":"Wasteland","b":360,"v":120,"f":false,"x":864.5,"y":3346},{"i":"25118-guilotine-warden-of-the-execution-grounds","n":"Guilotine, Warden of the Execution Grounds","lv":35,"l":"Execution Grounds","b":360,"v":120,"f":false,"x":1367.7,"y":3064.1},{"i":"25388-red-eye-captain-trakia","n":"Red Eye Captain Trakia","lv":35,"l":"Partisan\u0027s Hideaway","b":360,"v":120,"f":false,"x":1286.4,"y":2727.9},{"i":"25041-remmel","n":"Remmel","lv":35,"l":"Cruma Marshlands","b":360,"v":120,"f":false,"x":1064.5,"y":2914.8},{"i":"25098-sejarr-s-servitor","n":"Sejarr\u0027s Servitor","lv":35,"l":"Gorgon Flower Garden","b":360,"v":120,"f":false,"x":1913.7,"y":2964.5},{"i":"25223-soul-collector-acheron","n":"Soul Collector Acheron","lv":35,"l":"Execution Grounds","b":360,"v":120,"f":false,"x":1304.1,"y":3115.2},{"i":"25185-tasaba-patriarch-hellena","n":"Tasaba Patriarch Hellena","lv":35,"l":"Field of Silence","b":360,"v":120,"f":false,"x":1647.6,"y":3211.3},{"i":"25385-evil-spirit-tempest","n":"Evil Spirit Tempest","lv":36,"l":"Execution Grounds","b":360,"v":120,"f":false,"x":1391.2,"y":3043.8},{"i":"25211-sebek","n":"Sebek","lv":36,"l":"Field of Silence","b":360,"v":120,"f":false,"x":1559.8,"y":3413.2},{"i":"25415-nakondas","n":"Nakondas","lv":38,"l":"Gorgon Flower Garden","b":360,"v":120,"f":false,"x":1950,"y":3002},{"i":"25170-lizardmen-leader-hellion","n":"Lizardmen Leader Hellion","lv":40,"l":"Cruma Marshlands","b":420,"v":120,"f":false,"x":1181.5,"y":2879.9},{"i":"25394-premo-prime","n":"Premo Prime","lv":40,"l":"Innadril Territory","b":420,"v":120,"f":false,"x":1750.3,"y":3467},{"i":"25506-rayito-the-looter","n":"Rayito the Looter","lv":40,"l":"Immortal Plateau","b":420,"v":120,"f":false,"x":1146.5,"y":1168.8},{"i":"25082-leader-of-cat-gang","n":"Leader of Cat Gang","lv":41,"l":"Giran Territory","b":420,"v":120,"f":false,"x":1650.7,"y":3018.1},{"i":"25504-nellis-vengeful-spirit","n":"Nellis\u0027 Vengeful Spirit","lv":41,"l":"Eastern Mining Zone","b":420,"v":120,"f":false,"x":2410.6,"y":311.3},{"i":"25487-water-spirit-lian","n":"Water Spirit Lian","lv":41,"l":"Field of Silence","b":420,"v":120,"f":false,"x":1608,"y":3338.3},{"i":"25490-gwindorr","n":"Gwindorr","lv":42,"l":"Field of Whispers","b":420,"v":120,"f":false,"x":1635.5,"y":3591},{"i":"25115-icarus-sample-1","n":"Icarus Sample 1","lv":42,"l":"Innadril Territory","b":420,"v":120,"f":false,"x":1690.8,"y":3446.3},{"i":"25134-leto-chief-talkin","n":"Leto Chief Talkin","lv":42,"l":"Plains of the Lizardmen","b":420,"v":120,"f":false,"x":1642.4,"y":2532.8},{"i":"25064-wizard-of-storm-teruk","n":"Wizard of Storm Teruk","lv":42,"l":"Plains of the Lizardmen","b":420,"v":120,"f":false,"x":1680.5,"y":2599.1},{"i":"25214-fafurion-s-page-sika","n":"Fafurion\u0027s Page Sika","lv":43,"l":"Alligator Beach","b":420,"v":120,"f":false,"x":1827.3,"y":3539.2},{"i":"25410-road-scavenger-leader","n":"Road Scavenger Leader","lv":43,"l":"Death Pass","b":420,"v":120,"f":false,"x":1526.6,"y":2904.1},{"i":"25155-shaman-king-selu","n":"Shaman King Selu","lv":43,"l":"Timak Outpost","b":420,"v":120,"f":false,"x":1537.6,"y":2464.2},{"i":"25208-water-couatle-ateka","n":"Water Couatle Ateka","lv":43,"l":"Innadril Territory","b":420,"v":120,"f":false,"x":1539.8,"y":3475.8},{"i":"25088-crazy-mechanic-golem","n":"Crazy Mechanic Golem","lv":44,"l":"Ivory Tower Crater","b":420,"v":120,"f":false,"x":1667.6,"y":2084.8},{"i":"25192-earth-protector-panathen","n":"Earth Protector Panathen","lv":44,"l":"Alligator Island","b":420,"v":120,"f":false,"x":1931.3,"y":3391.1},{"i":"25007-retreat-spider-cletu","n":"Retreat Spider Cletu","lv":44,"l":"Aden Territory","b":420,"v":120,"f":false,"x":1918.6,"y":2528.3},{"i":"25418-dread-avenger-kraven","n":"Dread Avenger Kraven","lv":45,"l":"Sea of Spores","b":480,"v":120,"f":false,"x":1454.8,"y":2022.7},{"i":"25431-flamestone-golem","n":"Flamestone Golem","lv":45,"l":"Ivory Tower Crater","b":480,"v":120,"f":false,"x":1584.4,"y":2100.3},{"i":"25099-rotting-tree-repiro","n":"Rotting Tree Repiro","lv":45,"l":"Sea of Spores","b":480,"v":120,"f":false,"x":1467.2,"y":2082.3},{"i":"25085-timak-orc-chief-ranger","n":"Timak Orc Chief Ranger","lv":45,"l":"Aden Territory","b":480,"v":120,"f":false,"x":1488.4,"y":2467.6},{"i":"25057-beacon-of-blue-sky","n":"Beacon of Blue Sky","lv":46,"l":"Alligator Island","b":480,"v":120,"f":false,"x":1789.1,"y":3226.1},{"i":"25260-iron-giant-totem","n":"Iron Giant Totem","lv":46,"l":"Forest of Evil","b":480,"v":120,"f":false,"x":1684.8,"y":2108},{"i":"25102-shacram","n":"Shacram","lv":46,"l":"Hunters Village","b":480,"v":120,"f":false,"x":1839.9,"y":2594.5},{"i":"25438-thief-kelbar","n":"Thief Kelbar","lv":46,"l":"Hunters Valley","b":480,"v":120,"f":false,"x":1789.2,"y":2652.7},{"i":"25395-archon-suscepter","n":"Archon Suscepter","lv":47,"l":"Cruma Tower: 3rd Floor","b":480,"v":120,"f":false,"x":1097.7,"y":2854.8},{"i":"25441-evil-spirit-cyrion","n":"Evil Spirit Cyrion","lv":47,"l":"Hunters Valley","b":480,"v":120,"f":false,"x":1822.7,"y":2584.7},{"i":"25498-fafurion-s-henchman-istary","n":"Fafurion\u0027s Henchman Istary","lv":47,"l":"Alligator Island","b":480,"v":120,"f":false,"x":1937.1,"y":3272.2},{"i":"25173-tiger-king-karuta","n":"Tiger King Karuta","lv":47,"l":"Neutral Waters","b":480,"v":120,"f":false,"x":1555.2,"y":2794.7},{"i":"25437-timak-orc-gosmos","n":"Timak Orc Gosmos","lv":47,"l":"Timak Outpost","b":480,"v":120,"f":false,"x":1490.8,"y":2444},{"i":"25158-king-tarlk","n":"King Tarlk","lv":48,"l":"Forest of Evil","b":480,"v":120,"f":false,"x":1565.2,"y":2002.5},{"i":"25412-necrosentinel-royal-guard","n":"Necrosentinel Royal Guard","lv":48,"l":"Dragon Valley","b":480,"v":120,"f":false,"x":1600.4,"y":2812.2},{"i":"25026-ketra-commander-atis","n":"Ketra Commander Atis","lv":49,"l":"Forest of Evil","b":480,"v":120,"f":false,"x":1683.2,"y":2021.7},{"i":"25456-mirror-of-oblivion","n":"Mirror of Oblivion","lv":49,"l":"The Forest of Mirrors","b":480,"v":120,"f":false,"x":1989.4,"y":2615.7},{"i":"25420-orfen-s-handmaiden","n":"Orfen\u0027s Handmaiden","lv":49,"l":"Sea of Spores","b":480,"v":120,"f":false,"x":1300.9,"y":2142.7},{"i":"25131-carnage-lord-gato","n":"Carnage Lord Gato","lv":52,"l":"Outlaw Forest","b":600,"v":120,"f":false,"x":1552,"y":1891.5},{"i":"25217-cursed-clara","n":"Cursed Clara","lv":52,"l":"Dragon Valley","b":600,"v":120,"f":false,"x":1660.6,"y":2756},{"i":"25119-messenger-of-fairy-queen-berun","n":"Messenger of Fairy Queen Berun","lv":52,"l":"Enchanted Valley","b":600,"v":120,"f":false,"x":1900.7,"y":2442.8},{"i":"25067-captain-of-red-flag-shaka","n":"Captain of Red Flag Shaka","lv":53,"l":"Oren Territory","b":600,"v":120,"f":false,"x":1699.3,"y":1787.9},{"i":"25460-deadman-ereve","n":"Deadman Ereve","lv":53,"l":"Aden Territory","b":600,"v":120,"f":false,"x":2115.6,"y":2469.8},{"i":"25496-fafurion-s-envoy-pingolpin","n":"Fafurion\u0027s Envoy Pingolpin","lv":53,"l":"Garden of Eva","b":600,"v":120,"f":false,"x":1649.6,"y":3901.5},{"i":"25029-atraiban","n":"Atraiban","lv":54,"l":"Devil\u0027s Isle","b":600,"v":120,"f":false,"x":1405.1,"y":3510.5},{"i":"25481-magus-kenishee","n":"Magus Kenishee","lv":54,"l":"Devil\u0027s Isle","b":600,"v":120,"f":false,"x":1386.3,"y":3504.9},{"i":"25159-paniel-the-unicorn","n":"Paniel the Unicorn","lv":54,"l":"Enchanted Valley","b":600,"v":120,"f":false,"x":1925,"y":2286.4},{"i":"25137-beleth-s-seer-sephia","n":"Beleth\u0027s Seer, Sephia","lv":55,"l":"Giran Territory","b":600,"v":120,"f":false,"x":1926.2,"y":2732.6},{"i":"25070-enchanted-forest-watcher-ruell","n":"Enchanted Forest Watcher Ruell","lv":55,"l":"Enchanted Valley","b":600,"v":120,"f":false,"x":1929,"y":2337.9},{"i":"25010-furious-thieles","n":"Furious Thieles","lv":55,"l":"Enchanted Valley","b":600,"v":120,"f":false,"x":1842.4,"y":2359.4},{"i":"25103-sorcerer-isirr","n":"Sorcerer Isirr","lv":55,"l":"The Forest of Mirrors","b":600,"v":120,"f":false,"x":2006,"y":2671.8},{"i":"25434-bandit-leader-barda","n":"Bandit Leader Barda","lv":56,"l":"Oren Territory","b":600,"v":120,"f":false,"x":1767.2,"y":1835.2},{"i":"25176-black-lily","n":"Black Lily","lv":56,"l":"Dragon Valley","b":600,"v":120,"f":false,"x":1680.2,"y":2827},{"i":"25493-eva-s-spirit-niniel","n":"Eva\u0027s Spirit Niniel","lv":56,"l":"Garden of Eva","b":600,"v":120,"f":false,"x":1603.3,"y":3853.9},{"i":"25241-harit-hero-tamash","n":"Harit Hero Tamash","lv":56,"l":"Anghel Waterfall","b":600,"v":120,"f":false,"x":2232.2,"y":2624.1},{"i":"25273-carnamakos","n":"Carnamakos","lv":58,"l":"Cruma Tower: 2nd Floor","b":600,"v":120,"f":false,"x":1164.2,"y":2859.2},{"i":"25122-refugee-applicant-leo","n":"Refugee Applicant Leo","lv":58,"l":"Outlaw Forest","b":600,"v":120,"f":false,"x":1633.8,"y":1899.9},{"i":"25463-harit-guardian-garangky","n":"Harit Guardian Garangky","lv":59,"l":"Aden Territory","b":600,"v":120,"f":false,"x":2234,"y":2474.3},{"i":"25230-timak-seer-ragoth","n":"Timak Seer Ragoth","lv":59,"l":"Timak Outpost","b":600,"v":120,"f":false,"x":1485.9,"y":2312.6},{"i":"25089-soulless-wild-boar","n":"Soulless Wild Boar","lv":60,"l":"Anghel Waterfall","b":600,"v":120,"f":false,"x":2228.1,"y":2666.5},{"i":"25016-the-3rd-underwater-guardian","n":"The 3rd Underwater Guardian","lv":60,"l":"Garden of Eva","b":600,"v":120,"f":false,"x":1562.2,"y":3808},{"i":"25423-fairy-queen-timiniel","n":"Fairy Queen Timiniel","lv":61,"l":"Enchanted Valley","b":600,"v":120,"f":false,"x":1838,"y":2315},{"i":"25407-lord-ishka","n":"Lord Ishka","lv":61,"l":"Neutral Waters","b":600,"v":120,"f":false,"x":1849.9,"y":2804.7},{"i":"25032-eva-s-guardian-millenu","n":"Eva\u0027s Guardian Millenu","lv":64,"l":"The Cemetery","b":720,"v":120,"f":false,"x":2345.5,"y":2071.1},{"i":"25179-guardian-of-the-statue-of-giant-karum","n":"Guardian of the Statue of Giant Karum","lv":64,"l":"The Giant\u0027s Cave","b":720,"v":120,"f":false,"x":2359,"y":2354.7},{"i":"25226-roaring-lord-kastor","n":"Roaring Lord Kastor","lv":64,"l":"Oren Territory","b":720,"v":120,"f":false,"x":1767.8,"y":1934.3},{"i":"25256-taik-high-prefect-arak","n":"Taik High Prefect Arak","lv":64,"l":"Forsaken Plains","b":720,"v":120,"f":false,"x":2264.8,"y":2282},{"i":"25238-abyss-brukunt","n":"Abyss Brukunt","lv":65,"l":"The Forest of Mirrors","b":720,"v":120,"f":false,"x":2149.9,"y":2603.1},{"i":"25234-ancient-drake","n":"Ancient Drake","lv":65,"l":"Dragon Valley","b":720,"v":120,"f":false,"x":1886.8,"y":2798},{"i":"25182-demon-kuri","n":"Demon Kuri","lv":65,"l":"Aden Territory","b":720,"v":120,"f":false,"x":1943.1,"y":2180.7},{"i":"34143-erdrath-earth-spirit","n":"Erdrath, Earth Spirit","lv":65,"l":"Foot of the Mountain","b":540,"v":60,"f":false,"x":739.9,"y":3457.2},{"i":"25162-giant-marpanak","n":"Giant Marpanak","lv":65,"l":"The Giant\u0027s Cave","b":720,"v":120,"f":false,"x":2442.2,"y":2368.1},{"i":"34141-kaldrak-fire-spirit","n":"Kaldrak, Fire Spirit","lv":65,"l":"Wasteland","b":540,"v":60,"f":false,"x":686.7,"y":3308.5},{"i":"34142-naerith-water-spirit","n":"Naerith, Water Spirit","lv":65,"l":"Alligator Island","b":540,"v":60,"f":false,"x":1788,"y":3413.6},{"i":"34144-zephrath-wind-spirit","n":"Zephrath, Wind Spirit","lv":65,"l":"Windy Hill","b":540,"v":60,"f":false,"x":302,"y":2630.7},{"i":"25125-fierce-tiger-king-angel","n":"Fierce Tiger King Angel","lv":66,"l":"Anghel Waterfall","b":720,"v":120,"f":false,"x":2267.3,"y":2602.7},{"i":"25106-ghost-of-the-well-lidia","n":"Ghost of the Well Lidia","lv":66,"l":"Field of Massacre","b":720,"v":120,"f":false,"x":2291.8,"y":1875.7},{"i":"25467-gorgolos","n":"Gorgolos","lv":66,"l":"The Giant\u0027s Cave","b":720,"v":120,"f":false,"x":2384.3,"y":2423.3},{"i":"25051-rahha","n":"Rahha","lv":66,"l":"Aden Territory","b":720,"v":120,"f":false,"x":1889.1,"y":2149.3},{"i":"25444-enmity-ghost-ramdal","n":"Enmity Ghost Ramdal","lv":67,"l":"Tower of Insolence: Floor 1","b":720,"v":120,"f":false,"x":1835.6,"y":2093.2},{"i":"25255-gargoyle-lord-tiphon","n":"Gargoyle Lord Tiphon","lv":67,"l":"Aden Territory","b":720,"v":120,"f":false,"x":2261.8,"y":1774.1},{"i":"25140-hekaton-prime","n":"Hekaton Prime","lv":67,"l":"The Giant\u0027s Cave","b":720,"v":120,"f":false,"x":2426.2,"y":2383.6},{"i":"25478-shilen-s-priest-hisilrome","n":"Shilen\u0027s Priest Hisilrome","lv":67,"l":"The Cemetery","b":720,"v":120,"f":false,"x":2330.2,"y":1996.1},{"i":"25322-demon-s-agent-falston","n":"Demon\u0027s Agent Falston","lv":68,"l":"Aden Territory","b":720,"v":120,"f":false,"x":2399.1,"y":1980.7},{"i":"25263-kernon-s-faithful-servant-kelone","n":"Kernon\u0027s Faithful Servant Kelone","lv":68,"l":"Eastern Border Outpost","b":720,"v":120,"f":false,"x":2174.2,"y":1777.5},{"i":"25470-last-titan-utenus","n":"Last Titan Utenus","lv":68,"l":"The Giant\u0027s Cave","b":720,"v":120,"f":false,"x":2394.3,"y":2418.2},{"i":"5140-dame-rowena-hawkwood","n":"Dame Rowena Hawkwood","lv":69,"l":"Goddard Territory","b":110,"v":10,"f":false,"x":1814.5,"y":1870.2},{"i":"5142-sir-gaspard-morvan","n":"Sir Gaspard Morvan","lv":69,"l":"Goddard Territory","b":110,"v":10,"f":false,"x":1831.1,"y":1772.6},{"i":"5143-archmage-ilyssara-faen","n":"Archmage Ilyssara Faen","lv":70,"l":"Goddard Territory","b":110,"v":10,"f":false,"x":1815.7,"y":1824.5},{"i":"25073-bloody-priest-rudelto","n":"Bloody Priest Rudelto","lv":70,"l":"Antharas\u0027 Lair","b":840,"v":120,"f":false,"x":2066.9,"y":2790.6},{"i":"25092-korim","n":"Korim","lv":70,"l":"Tower of Insolence: Floor 6","b":840,"v":120,"f":false,"x":1863.3,"y":2089.6},{"i":"5141-lord-aldric-ravenscar","n":"Lord Aldric Ravenscar","lv":70,"l":"Western Fortress","b":110,"v":10,"f":false,"x":1822.1,"y":1849.2},{"i":"25035-shilen-s-messenger-cabrio","n":"Shilen\u0027s Messenger Cabrio","lv":70,"l":"Aden Territory","b":840,"v":120,"f":false,"x":2316.1,"y":1987.6},{"i":"25233-spirit-of-andras-the-betrayer","n":"Spirit of Andras, the Betrayer","lv":70,"l":"Field of Massacre","b":840,"v":120,"f":false,"x":2381.2,"y":1762.4},{"i":"5144-thane-wayland-goldhand","n":"Thane Wayland Goldhand","lv":70,"l":"Western Border Outpost","b":110,"v":10,"f":false,"x":1837.1,"y":1869.1},{"i":"25198-fafurion-s-herald-lokness","n":"Fafurion\u0027s Herald Lokness","lv":71,"l":"Alligator Island","b":840,"v":120,"f":false,"x":1758.2,"y":3143.4},{"i":"25453-meanas-anor","n":"Meanas Anor","lv":71,"l":"Blazing Swamp","b":840,"v":120,"f":false,"x":2162.5,"y":1915.4},{"i":"25252-palibati-queen-themis","n":"Palibati Queen Themis","lv":71,"l":"The Forbidden Gateway","b":840,"v":120,"f":false,"x":2433.9,"y":2129.8},{"i":"25163-roaring-skylancer","n":"Roaring Skylancer","lv":71,"l":"Aden Territory","b":840,"v":120,"f":false,"x":1965.6,"y":2405.6},{"i":"25281-anakim-s-nemesis-zakaron","n":"Anakim\u0027s Nemesis Zakaron","lv":72,"l":"Aden Territory","b":840,"v":120,"f":false,"x":1995.7,"y":1902.8},{"i":"25269-beast-lord-behemoth","n":"Beast Lord Behemoth","lv":72,"l":"Aden Territory","b":840,"v":120,"f":false,"x":1968,"y":2276.1},{"i":"25248-doom-blade-tanatos","n":"Doom Blade Tanatos","lv":72,"l":"Ancient Battleground","b":840,"v":120,"f":false,"x":1931,"y":1935.6},{"i":"25447-immortal-savior-mardil","n":"Immortal Savior Mardil","lv":72,"l":"Tower of Insolence: Floor 3","b":840,"v":120,"f":false,"x":1835.9,"y":2093.2},{"i":"25109-antharas-priest-cloe","n":"Antharas Priest Cloe","lv":73,"l":"Antharas\u0027 Lair","b":840,"v":120,"f":false,"x":2129.3,"y":2790.8},{"i":"25220-death-lord-hallate","n":"Death Lord Hallate","lv":73,"l":"Tower of Insolence: Floor 3","b":840,"v":120,"f":false,"x":1835.5,"y":2093.1},{"i":"25235-vanor-chief-kandra","n":"Vanor Chief Kandra","lv":73,"l":"Aden Territory","b":840,"v":120,"f":false,"x":1945.3,"y":2005.3},{"i":"25199-water-dragon-seer-sheshark","n":"Water Dragon Seer Sheshark","lv":73,"l":"Alligator Island","b":840,"v":120,"f":false,"x":1793.4,"y":3141.4},{"i":"25524-flamestone-giant","n":"Flamestone Giant","lv":74,"l":"Blazing Swamp","b":840,"v":120,"f":false,"x":2071.7,"y":1920.1},{"i":"25202-krokian-padisha-sobekk","n":"Krokian Padisha Sobekk","lv":74,"l":"Alligator Island","b":840,"v":120,"f":false,"x":1884.7,"y":3140},{"i":"29006-core","n":"Core","lv":75,"l":"Cruma Tower: 1st Floor","b":null,"v":null,"f":true,"x":1118.5,"y":2779.7},{"i":"29014-orfen","n":"Orfen","lv":75,"l":"Sea of Spores","b":null,"v":null,"f":true,"x":1398.8,"y":2091.9},{"i":"29001-queen-ant","n":"Queen Ant","lv":75,"l":"The Ant Nest","b":null,"v":null,"f":true,"x":823,"y":3325.8}];
+const MAP_W = 3072, MAP_H = 4096;
+
+const LS_STATE = 'l2gamma.rb.state.v1';
+const LS_SET   = 'l2gamma.rb.settings.v1';
+
+/* ---------- общие таймеры (Supabase) ----------
+   Пока url и key пустые — приложение работает как раньше, только локально.
+   Как заполнить: см. sync-setup.txt рядом с этим файлом.
+   url — Project URL вида https://xxxxxxxx.supabase.co
+   key — anon public key (он не секретный, но и не должен быть ключом service_role!)
+*/
+const SYNC = {
+  url: '',
+  key: '',
+  table: 'rb_kills',
+  pollMs: 15000
+};
+
+const $ = id => document.getElementById(id);
+const bossById = id => BOSSES.find(b => b.i === id);
+
+let state = loadJSON(LS_STATE, {});
+let settings = Object.assign({ sound:true, preWarn:0 }, loadJSON(LS_SET, {}));
+settings.ui = Object.assign({ q:'', lo:'', hi:'', charLv:'', spread:7, status:'all', sort:'level' }, settings.ui || {});
+let modalCtx = null;
+let currentDetailId = null;
+
+function loadJSON(k, def){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch(e){ return def; } }
+function save(){ try{ localStorage.setItem(LS_STATE, JSON.stringify(state)); }catch(e){} }
+function saveSet(){ try{ localStorage.setItem(LS_SET, JSON.stringify(settings)); }catch(e){} }
+
+/* ---------- UI state persistence ---------- */
+const UI_IDS = ['q','lo','hi','charLv','spread','status','sort'];
+function readUIControls(){ const o = {}; UI_IDS.forEach(id => o[id] = $(id).value); return o; }
+function applyUIControls(){
+  const u = settings.ui || {};
+  UI_IDS.forEach(id => { if (u[id] !== undefined && u[id] !== null) $(id).value = u[id]; });
+}
+let uiSaveTimer = null;
+function persistUISoon(){ clearTimeout(uiSaveTimer); uiSaveTimer = setTimeout(persistUI, 300); }
+function persistUI(){
+  settings.ui = readUIControls();
+  settings.detail = currentDetailId || null;
+  saveSet();
+}
+
+/* ---------- shared timers sync ----------
+   Модель: одна строка на босса в таблице SYNC.table, «побеждает кто позже поменял» (updated_at).
+   Удаление не стирает строку, а ставит deleted=true — иначе другой игрок «воскресил» бы старый таймер.
+*/
+function syncEnabled(){ return !!(SYNC.url && SYNC.key); }
+let syncDirty = new Set();
+let syncKnown = new Set();
+let syncBusy = false;
+let syncLast = 0, syncErr = '';
+let syncTimer = null;
+
+function markDirty(id){
+  if (!syncEnabled()) return;
+  syncDirty.add(id);
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(runSync, 500);
+}
+function rowOf(id){
+  const s = state[id];
+  if (!s){
+    return { id, killed_at:0, r0:0, r1:0, checks:[], deleted:true, updated_at: (settings.del || {})[id] || Date.now() };
+  }
+  return {
+    id,
+    killed_at: s.k || 0,
+    r0: s.r0 || 0,
+    r1: s.r1 || 0,
+    checks: (s.ch || []).slice(-100),
+    deleted: false,
+    updated_at: s.u || s.k || 0
+  };
+}
+/* Метка «кто позже»: всегда больше всего, что мы уже видели по этому боссу.
+   Без этого при расхождении часов удаление или свежая отметка проигрывали старой. */
+function nextU(id){
+  const seen = Math.max(
+    ((settings.uv || {})[id]) || 0,
+    (state[id] && (state[id].u || state[id].k)) || 0,
+    ((settings.del || {})[id]) || 0
+  );
+  const u = Math.max(Date.now(), seen + 1);
+  settings.uv = settings.uv || {};
+  settings.uv[id] = u;
+  saveSet();
+  return u;
+}
+function syncUrl(qs){ return SYNC.url.replace(/\/+$/,'') + '/rest/v1/' + SYNC.table + qs; }
+async function syncReq(qs, method, body, prefer){
+  const headers = { apikey: SYNC.key, Authorization: 'Bearer ' + SYNC.key, 'Content-Type': 'application/json' };
+  if (prefer) headers.Prefer = prefer;
+  const res = await fetch(syncUrl(qs), {
+    method: method || 'GET',
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    cache: 'no-store'
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res;
+}
+async function runSync(){
+  if (!syncEnabled() || syncBusy) return;
+  syncBusy = true;
+  try {
+    /* Сначала тянем: иначе локальная старая копия затрёт чужие изменения (например удаление). */
+    const res = await syncReq('?select=id,killed_at,r0,r1,checks,deleted,updated_at');
+    applyRemoteRows(await res.json());
+    /* Отметки, которых сервер вообще не знает (первый запуск / данные из файла), отправляем сами. */
+    Object.keys(state).forEach(id => { if (!syncKnown.has(id)) syncDirty.add(id); });
+    if (syncDirty.size){
+      const ids = Array.from(syncDirty);
+      syncDirty.clear();
+      /* Неотправленная своя правка уходит с меткой выше всего, что мы уже видели. */
+      ids.forEach(id => {
+        if (state[id]){ state[id].u = nextU(id); }
+        else if (!(settings.del || {})[id]){ settings.del = settings.del || {}; settings.del[id] = nextU(id); }
+      });
+      const rows = ids.map(rowOf);
+      try {
+        await syncReq('?on_conflict=id', 'POST', rows, 'resolution=merge-duplicates,return=minimal');
+        ids.forEach(id => syncKnown.add(id));
+        save(); saveSet();
+      } catch(e){
+        ids.forEach(id => syncDirty.add(id));
+        throw e;
+      }
+    }
+    syncLast = Date.now(); syncErr = '';
+  } catch(e){
+    syncErr = (e && e.message) ? e.message : 'ошибка';
+  } finally {
+    syncBusy = false;
+    renderSync();
+  }
+}
+function applyRemoteRows(rows){
+  if (!Array.isArray(rows)) return;
+  const now = Date.now();
+  const pre = (settings.preWarn || 0) * 60000;
+  let changed = false, uvChanged = false;
+  rows.forEach(r=>{
+    if (!r || !r.id || !bossById(r.id)) return;
+    syncKnown.add(r.id);
+    const remU = Number(r.updated_at) || 0;
+    settings.uv = settings.uv || {};
+    if (remU > (settings.uv[r.id] || 0)){ settings.uv[r.id] = remU; uvChanged = true; }
+    /* Своя правка ещё не ушла на сервер — не даём чужой строке её отменить. */
+    if (syncDirty.has(r.id)) return;
+    const loc = state[r.id];
+    const locU = loc ? (loc.u || loc.k || 0) : ((settings.del || {})[r.id] || 0);
+    if (remU <= locU) return;
+    if (r.deleted){
+      if (loc){ delete state[r.id]; changed = true; }
+      settings.del = settings.del || {};
+      settings.del[r.id] = remU;
+      saveSet();
+      if (currentDetailId === r.id) hideDetail();
+      return;
+    }
+    const r0 = Number(r.r0) || 0, r1 = Number(r.r1) || 0;
+    state[r.id] = {
+      k: Number(r.killed_at) || 0,
+      r0, r1,
+      np: now >= r0 - pre,
+      n0: now >= r0,
+      n1: now >= r1,
+      ch: Array.isArray(r.checks) ? r.checks.map(Number) : [],
+      u: remU
+    };
+    changed = true;
+  });
+  if (uvChanged) saveSet();
+  if (changed){ save(); renderAll(); }
+}
+function renderSync(){
+  const b = $('syncBtn'); if (!b) return;
+  b.classList.remove('bad');
+  if (!syncEnabled()){
+    b.textContent = '☁ только локально';
+    b.title = 'Общие таймеры не настроены. Впиши SYNC.url и SYNC.key в index.html — пошагово в sync-setup.txt.';
+    return;
+  }
+  if (syncErr){
+    b.textContent = '☁ нет связи';
+    b.classList.add('bad');
+    b.title = 'Синхронизация не отвечает: ' + syncErr + '\nОтметки сохранены локально и уйдут, когда связь вернётся.';
+    return;
+  }
+  b.textContent = '☁ общие' + (syncLast ? ' · ' + fmtClock(syncLast) : '');
+  b.title = 'Общие таймеры включены. Клик — синхронизировать сейчас.'
+    + (syncLast ? '\nПоследний обмен: ' + new Date(syncLast).toLocaleString('ru-RU') : '');
+}
+
+/* ---------- helpers ---------- */
+function respLabel(b){
+  if (b.f) return 'фикс. респ';
+  const fmt = min => {
+    if (min % 60 === 0) return `${min/60} ч`;
+    const h = Math.floor(min/60), m = min % 60;
+    return h ? `${h} ч ${m} м` : `${m} м`;
+  };
+  return `${fmt(b.b)} ± ${fmt(b.v)}`;
+}
+function fmtDur(ms){
+  if (ms <= 0) return '0с';
+  const s = Math.floor(ms/1000), d = Math.floor(s/86400),
+        h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60), sec = s%60;
+  if (d) return `${d}д ${h}ч ${m}м`;
+  if (h) return `${h}ч ${m}м ${sec}с`;
+  if (m) return `${m}м ${sec}с`;
+  return `${sec}с`;
+}
+function fmtDurShort(ms){
+  if (ms <= 0) return '0м';
+  const s = Math.floor(ms/1000), d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60);
+  if (d) return `${d}д${h}ч`;
+  if (h) return `${h}ч${m}м`;
+  return `${m}м`;
+}
+function fmtClock(ms){ return new Date(ms).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}); }
+function statusOf(s){
+  if (!s) return 'alive';
+  const now = Date.now();
+  if (now < s.r0) return 'pending';
+  if (now < s.r1) return 'window';
+  return 'up';
+}
+const STATUS_META = {
+  alive:   { cls:'st-alive',   badge:'b-alive',   txt:'жив' },
+  pending: { cls:'st-pending', badge:'b-pending', txt:'таймер идёт' },
+  window:  { cls:'st-window',  badge:'b-window',  txt:'возможен респ' },
+  up:      { cls:'st-up',      badge:'b-up',      txt:'респ!' },
+};
+
+/* ---------- sound / notify ---------- */
+let audioCtx = null;
+function unlockAudio(){ try{ audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(e){} }
+function beep(){
+  if (!settings.sound) return;
+  try{
+    unlockAudio(); if(!audioCtx) return;
+    const t = audioCtx.currentTime;
+    [880,1100,1320].forEach((f,i)=>{
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type='sine'; o.frequency.value = f;
+      const dt = t + i*0.22;
+      g.gain.setValueAtTime(0.0001, dt);
+      g.gain.exponentialRampToValueAtTime(0.28, dt+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, dt+0.2);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(dt); o.stop(dt+0.21);
+    });
+  }catch(e){}
+}
+function notify(title, body){
+  if (settings.sound) beep();
+  if ('Notification' in window && Notification.permission === 'granted'){
+    try{ new Notification(title, { body }); }catch(e){}
+  }
+}
+
+/* ---------- filters ---------- */
+function baseFiltered(){
+  const q = ($('q').value||'').trim().toLowerCase();
+  const lo = parseInt($('lo').value,10), hi = parseInt($('hi').value,10);
+  const clv = parseInt($('charLv').value,10);
+  const sp = Math.max(0, parseInt($('spread').value,10) || 0);
+  const st = $('status').value;
+  return BOSSES.filter(b=>{
+    if (q && !(b.n.toLowerCase().includes(q) || (b.l||'').toLowerCase().includes(q))) return false;
+    if (!isNaN(lo) && b.lv < lo) return false;
+    if (!isNaN(hi) && b.lv > hi) return false;
+    if (!isNaN(clv) && Math.abs(b.lv - clv) > sp) return false;
+    if (st !== 'all' && statusOf(state[b.i]) !== st) return false;
+    return true;
+  });
+}
+function listFiltered(){
+  const arr = baseFiltered();
+  const sort = $('sort').value;
+  if (sort === 'name') arr.sort((a,b)=>a.n.localeCompare(b.n));
+  else if (sort === 'respawn'){
+    arr.sort((a,b)=>{
+      const sa = state[a.i], sb = state[b.i];
+      const ra = sa ? (statusOf(sa)==='up' ? Infinity : sa.r0) : Infinity;
+      const rb = sb ? (statusOf(sb)==='up' ? Infinity : sb.r0) : Infinity;
+      if (ra !== rb) return ra - rb;
+      return a.lv - b.lv;
+    });
+  } else arr.sort((a,b)=> a.lv - b.lv || a.n.localeCompare(b.n));
+  return arr;
+}
+
+/* ---------- render ---------- */
+function renderAll(){ renderList(); renderMap(); if (currentDetailId) renderDetail(); }
+function renderList(){
+  const arr = listFiltered();
+  $('total').textContent = arr.length + ' из ' + BOSSES.length;
+  $('listCount').textContent = arr.length ? `(${arr.length})` : '';
+  const marked = Object.keys(state).length;
+  $('counts').textContent = marked ? `отмечено: ${marked}` : '';
+  $('list').innerHTML = arr.map(cardHTML).join('');
+}
+function cardHTML(b){
+  const s = state[b.i], st = statusOf(s), meta = STATUS_META[st];
+  let timer = '', side = '', chkLine = '';
+  if (s){
+    const now = Date.now();
+    if (st === 'pending'){
+      const win = b.f ? `респ к ${fmtClock(s.r0)}` : `окно: ${fmtClock(s.r0)} – ${fmtClock(s.r1)}`;
+      timer = `<div class="timer"><span class="big mono">до респа: ${fmtDur(s.r0 - now)}</span><div class="window">${win}</div></div>`;
+    } else if (st === 'window'){
+      timer = `<div class="timer"><span class="big mono" style="color:var(--amber)">возможен респ · до конца окна ${fmtDur(s.r1 - now)}</span></div>`;
+    } else {
+      timer = `<div class="timer"><span class="big mono overdue">респ — уже ${fmtDur(now - s.r1)} назад</span></div>`;
+    }
+    const ch = checksOf(s);
+    chkLine = `<div class="chk">${ ch.length ? `✓ проверено <b>${ch.length}</b>× · ${ch.map(t=>fmtClock(t)).slice(-3).join(', ')}` : 'ещё не проверял'}</div>`;
+    side = `<div class="side"><span class="time mono">убит ${fmtClock(s.k)}</span></div>`;
+  }
+  return `<div class="card ${meta.cls}" data-id="${b.i}">
+    <div class="row1"><span class="name">${esc(b.n)}</span><span class="badge ${meta.badge}">${meta.txt}</span></div>
+    <div class="loc">${esc(b.l||'')} · ур. ${b.lv}</div>
+    <div class="resp">респ: ${respLabel(b)}</div>
+    ${ timer }
+    ${ chkLine }
+    <div class="actions">${ actionsHTML(b) }</div>
+    ${ side }
+  </div>`;
+}
+
+/* ---------- map ---------- */
+let mapView = { s:0, tx:0, ty:0, minS:0 };
+let stageSize = { w:0, h:0 };
+function fitMap(){
+  const stage = $('mapStage');
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  if (!sw || !sh) return;
+  mapView.minS = Math.min(sw/MAP_W, sh/MAP_H);
+  mapView.s = mapView.minS;
+  mapView.tx = (sw - MAP_W*mapView.s)/2;
+  mapView.ty = (sh - MAP_H*mapView.s)/2;
+  stageSize = { w:sw, h:sh };
+  applyMapTransform();
+}
+function resizeMap(){
+  const stage = $('mapStage');
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  if (!sw || !sh) return;
+  const z = (stageSize.w && mapView.minS && mapView.s) ? mapView.s/mapView.minS : 1;
+  const cx = (stageSize.w && mapView.s) ? (stageSize.w/2 - mapView.tx)/mapView.s : MAP_W/2;
+  const cy = (stageSize.h && mapView.s) ? (stageSize.h/2 - mapView.ty)/mapView.s : MAP_H/2;
+  mapView.minS = Math.min(sw/MAP_W, sh/MAP_H);
+  mapView.s = Math.min(Math.max(mapView.minS*z, mapView.minS), 8);
+  mapView.tx = sw/2 - cx*mapView.s;
+  mapView.ty = sh/2 - cy*mapView.s;
+  stageSize = { w:sw, h:sh };
+  applyMapTransform();
+}
+function applyMapTransform(){
+  $('mapInner').style.transform = `translate(${mapView.tx}px, ${mapView.ty}px) scale(${mapView.s})`;
+  $('mapInner').style.setProperty('--invS', (1/mapView.s).toFixed(4));
+  persistMapSoon();
+}
+let mapSaveTimer = null;
+function persistMapSoon(){ clearTimeout(mapSaveTimer); mapSaveTimer = setTimeout(persistMap, 350); }
+function persistMap(){
+  const stage = $('mapStage');
+  if (!stage.clientWidth || !stage.clientHeight || !mapView.s) return;
+  settings.map = {
+    z: mapView.s / (mapView.minS || mapView.s),
+    cx: (stage.clientWidth/2 - mapView.tx)/mapView.s,
+    cy: (stage.clientHeight/2 - mapView.ty)/mapView.s
+  };
+  saveSet();
+}
+function restoreMapView(){
+  fitMap();
+  const m = settings.map;
+  if (!m || !isFinite(m.cx) || !isFinite(m.cy) || !isFinite(m.z)) return;
+  const stage = $('mapStage');
+  const sw = stage.clientWidth, sh = stage.clientHeight;
+  if (!sw || !sh) return;
+  const z = Math.min(Math.max(m.z, 1), 8/(mapView.minS || 1));
+  mapView.s = Math.min(Math.max(mapView.minS*z, mapView.minS), 8);
+  mapView.tx = sw/2 - m.cx*mapView.s;
+  mapView.ty = sh/2 - m.cy*mapView.s;
+  applyMapTransform();
+}
+function mapTimerText(b, s, now){
+  const st = statusOf(s);
+  const chk = checksOf(s).length ? ' ✓' : '';
+  if (st === 'pending') return ' · ⏳ ' + fmtDurShort(s.r0 - now) + chk;
+  if (st === 'window') return ' · ⚠ респ' + chk;
+  return ' · ✅ респ' + chk;
+}
+function renderMap(){
+  $('markers').innerHTML = baseFiltered().map(b=>{
+    const st = statusOf(state[b.i]); const s = state[b.i];
+    const timer = s ? `<span class="mt">${mapTimerText(b, s, Date.now())}</span>` : '';
+    const icon = s ? '💀' : '';
+    return `<div class="marker m-${st}" data-id="${b.i}" title="${esc(b.n + ' (' + b.lv + ' ур.) · ' + STATUS_META[st].txt)}" style="left:${(b.x/MAP_W*100).toFixed(4)}%;top:${(b.y/MAP_H*100).toFixed(4)}%">${icon}<span class="mlabel"><span class="mn">${esc(b.n)} · ур. ${b.lv}</span>${timer}</span></div>`;
+  }).join('');
+}
+
+/* ---------- detail panel ---------- */
+function showDetail(id){ currentDetailId = id; renderDetail(); persistUISoon(); }
+function hideDetail(){ currentDetailId = null; $('detail').classList.add('is-hidden'); persistUISoon(); }
+function renderDetail(){
+  const b = bossById(currentDetailId);
+  if (!b){ hideDetail(); return; }
+  $('detailBody').innerHTML = detailHTML(b);
+  $('detail').classList.remove('is-hidden');
+}
+function detailHTML(b){
+  const s = state[b.i], st = statusOf(s), meta = STATUS_META[st];
+  let timer = '', chkList = '';
+  if (s){
+    const now = Date.now();
+    if (st === 'pending'){
+      const win = b.f ? `респ к ${fmtClock(s.r0)}` : `окно: ${fmtClock(s.r0)} – ${fmtClock(s.r1)}`;
+      timer = `<div class="timer"><span class="big mono" id="dtBig">до респа: ${fmtDur(s.r0 - now)}</span><div class="window">${win} · убит в ${fmtClock(s.k)}</div></div>`;
+    } else if (st === 'window'){
+      timer = `<div class="timer"><span class="big mono" style="color:var(--amber)" id="dtBig">возможен респ · до конца окна ${fmtDur(s.r1 - now)}</span></div>`;
+    } else {
+      timer = `<div class="timer"><span class="big mono overdue" id="dtBig">респ — уже ${fmtDur(now - s.r1)} назад</span></div>`;
+    }
+    const ch = checksOf(s);
+    chkList = ch.length
+      ? `<div class="chk-list">${ch.slice().reverse().map(t=>`<div>✓ проверено ${fmtClock(t)}</div>`).join('')}</div>`
+      : `<div class="chk">ещё не проверял</div>`;
+  }
+  return `<div class="row1"><span class="name">${esc(b.n)}</span><span class="badge ${meta.badge}">${meta.txt}</span></div>
+    <div class="loc">${esc(b.l||'')} · ур. ${b.lv}</div>
+    <div class="resp">респ: ${respLabel(b)}</div>
+    ${ timer }
+    ${ chkList }
+    <div class="actions">${ actionsHTML(b) }</div>`;
+}
+function actionsHTML(b){
+  const s = state[b.i];
+  const mode = b.f ? 'fixed' : 'killed';
+  const tTitle = b.f ? 'Вписать время респа вручную' : 'Вписать время убийства вручную (таймер пересчитается)';
+  const tLabel = b.f ? (s ? '🕓 Время' : '🕓 Задать респ') : (s ? '🕓 Время' : '🕓 Убил в…');
+  if (s){
+    return `<button class="ghost" onclick="checkBoss('${b.i}')">✓ Проверил</button>`
+      + `<button class="ghost" title="${tTitle}" onclick="openTimeModal('${b.i}','${mode}')">${tLabel}</button>`
+      + `<button class="ghost" onclick="resetBoss('${b.i}')">↺ Сброс</button>`;
+  }
+  if (b.f) return `<button class="primary" title="${tTitle}" onclick="openTimeModal('${b.i}','fixed')">${tLabel}</button>`;
+  return `<button class="primary" onclick="markKilled('${b.i}')">🔪 Убил</button>`
+    + `<button class="ghost" title="${tTitle}" onclick="openTimeModal('${b.i}','killed')">${tLabel}</button>`;
+}
+
+/* ---------- actions ---------- */
+function freshState(id, k, r0, r1, ch){
+  const now = Date.now();
+  const pre = (settings.preWarn || 0) * 60000;
+  return {
+    k, r0, r1,
+    u: nextU(id),
+    np: pre > 0 && now >= r0 - pre,
+    n0: now >= r0,
+    n1: now >= r1,
+    ch: ch || []
+  };
+}
+function markKilled(id){
+  unlockAudio();
+  const b = bossById(id);
+  if (b.f){ openTimeModal(id, 'fixed'); return; }
+  const now = Date.now();
+  state[id] = freshState(id, now, now + b.b*60000, now + (b.b + b.v)*60000, []);
+  save(); renderAll(); markDirty(id);
+}
+function checksOf(s){ return s.ch || (s.ch = []); }
+function checkBoss(id){
+  const s = state[id]; if (!s) return;
+  checksOf(s).push(Date.now());
+  s.u = nextU(id);
+  save(); renderAll(); markDirty(id);
+}
+function forgetBoss(id){
+  const u = nextU(id);
+  settings.del = settings.del || {};
+  settings.del[id] = u;
+  delete state[id];
+  save(); saveSet();
+  markDirty(id);
+}
+function resetBoss(id){ forgetBoss(id); renderAll(); }
+function resetAll(){
+  if (Object.keys(state).length === 0) return;
+  if (!confirm('Сбросить все отметки об убийствах?')) return;
+  const ids = new Set(Object.keys(state));
+  syncKnown.forEach(id => ids.add(id));
+  ids.forEach(id => forgetBoss(id));
+  renderAll();
+}
+function saveState(){
+  const payload = { app:'l2gamma-rb', v:1, exported: Date.now(), state, settings };
+  const blob = new Blob([JSON.stringify(payload)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'raidbosses-save.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1500);
+}
+function applySettingsToUI(){
+  $('prewarn').value = settings.preWarn || 0;
+  $('sound').textContent = settings.sound ? '🔊 Звук: вкл' : '🔇 Звук: выкл';
+  applyUIControls();
+}
+function onFilePicked(e){
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try {
+      const data = JSON.parse(r.result);
+      const st = (data && data.state) || data;
+      if (!st || typeof st !== 'object' || Array.isArray(st)) throw new Error('bad');
+      const n = Object.keys(st).length;
+      if (!confirm(`Загрузить ${n} отметок? Текущие отметки будут заменены.`)) return;
+      state = st;
+      if (data && data.settings) settings = Object.assign({}, settings, data.settings);
+      settings.ui = Object.assign({}, settings.ui || {});
+      Object.keys(state).forEach(id => {
+        const s = state[id];
+        if (s && typeof s === 'object'){ s.u = nextU(id); markDirty(id); }
+      });
+      save(); saveSet(); applySettingsToUI(); restoreMapView();
+      if (settings.detail && bossById(settings.detail)) showDetail(settings.detail); else hideDetail();
+      renderAll();
+    } catch(err){
+      alert('Не удалось прочитать файл. Похоже, это не файл сохранения.');
+    }
+  };
+  r.readAsText(f);
+  e.target.value = '';
+}
+
+/* ---------- time modal: manual kill time / fixed respawn ---------- */
+function toLocalInput(ms){
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function openTimeModal(id, mode){
+  const b = bossById(id); if (!b) return;
+  const s = state[id];
+  modalCtx = { id, mode: mode || (b.f ? 'fixed' : 'killed') };
+  $('modalName').textContent = b.n;
+  let base;
+  if (modalCtx.mode === 'killed'){
+    $('modalHint').textContent = 'Укажи, когда босса убили — таймер респа посчитается от этого времени.';
+    base = (s && s.k) ? s.k : Date.now();
+  } else {
+    $('modalHint').textContent = 'Фиксированный респ — укажи ожидаемое время появления босса.';
+    base = (s && s.r0) ? s.r0 : Date.now() + 6*3600*1000;
+  }
+  $('modalTime').value = toLocalInput(base);
+  renderModalQuick(modalCtx.mode);
+  $('modal').classList.add('show');
+}
+function renderModalQuick(mode){
+  const q = $('modalQuick');
+  q.innerHTML = '';
+  const items = mode === 'killed'
+    ? [['сейчас',0],['−5 мин',-5*60000],['−15 мин',-15*60000],['−30 мин',-30*60000],['−1 ч',-3600000],['−3 ч',-3*3600000]]
+    : [['+1 ч',3600000],['+2 ч',2*3600000],['+4 ч',4*3600000],['+6 ч',6*3600000],['+12 ч',12*3600000],['+24 ч',24*3600000]];
+  items.forEach(([label, delta])=>{
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'ghost'; btn.textContent = label;
+    btn.onclick = ()=>{ $('modalTime').value = toLocalInput(Date.now() + delta); };
+    q.appendChild(btn);
+  });
+}
+function pad(n){ return String(n).padStart(2,'0'); }
+
+/* ---------- tick ---------- */
+function tick(){
+  const now = Date.now();
+  for (const id in state){
+    const s = state[id], b = bossById(id); if (!b) continue;
+    if (b.f){
+      if (now >= s.r0 && !s.n1){ s.n1 = true; save(); notify(`Респ: ${b.n}`, `Ожидается в ${fmtClock(s.r0)} · ${b.l||''}`); }
+    } else {
+      if (settings.preWarn > 0 && now >= s.r0 - settings.preWarn*60000 && !s.np){
+        s.np = true; save();
+        notify(`Скоро респ: ${b.n}`, `Окно откроется через ~${fmtDur(s.r0 - now)}`);
+      }
+      if (now >= s.r0 && !s.n0){
+        s.n0 = true; save();
+        notify(`Респ возможен: ${b.n}`, `Окно ${fmtClock(s.r0)} – ${fmtClock(s.r1)} · ${b.l||''}`);
+      }
+      if (now >= s.r1 && !s.n1){
+        s.n1 = true; save();
+        notify(`Респ: ${b.n}`, `Босс должен быть на месте · ${b.l||''}`);
+      }
+    }
+  }
+  updateLive();
+}
+function updateLive(){
+  const now = Date.now();
+  document.querySelectorAll('.card[data-id]').forEach(el=>{
+    const b = bossById(el.dataset.id); const s = state[b.i]; if (!s) return;
+    const st = statusOf(s);
+    const big = el.querySelector('.big');
+    if (big){
+      if (st==='pending') big.textContent = `до респа: ${fmtDur(s.r0 - now)}`;
+      else if (st==='window') big.textContent = `возможен респ · до конца окна ${fmtDur(s.r1 - now)}`;
+      else big.textContent = `респ — уже ${fmtDur(now - s.r1)} назад`;
+    }
+  });
+  if (currentDetailId){
+    const b = bossById(currentDetailId), s = state[b.id];
+    const big = $('dtBig');
+    if (big && s){
+      const st = statusOf(s);
+      if (st==='pending') big.textContent = `до респа: ${fmtDur(s.r0 - now)}`;
+      else if (st==='window') big.textContent = `возможен респ · до конца окна ${fmtDur(s.r1 - now)}`;
+      else big.textContent = `респ — уже ${fmtDur(now - s.r1)} назад`;
+    }
+  }
+  // map markers: status class + label text
+  document.querySelectorAll('.marker[data-id]').forEach(m=>{
+    const b = bossById(m.dataset.id); const s = state[b.i]; const st = statusOf(s);
+    m.className = 'marker m-' + st;
+    const mt = m.querySelector('.mt');
+    if (s && mt) mt.textContent = mapTimerText(b, s, now);
+  });
+}
+
+function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- wiring ---------- */
+['q','lo','hi','charLv','spread','status','sort'].forEach(id=>{
+  $(id).addEventListener('input', ()=>{ renderAll(); persistUISoon(); });
+  $(id).addEventListener('change', ()=>{ renderAll(); persistUISoon(); });
+});
+$('fitBtn').addEventListener('click', fitMap);
+$('prewarn').addEventListener('change', e=>{ settings.preWarn = Math.max(0, parseInt(e.target.value,10)||0); saveSet(); });
+$('prewarn').addEventListener('input', e=>{ settings.preWarn = Math.max(0, parseInt(e.target.value,10)||0); saveSet(); });
+$('sound').addEventListener('click', e=>{ settings.sound = !settings.sound; saveSet(); e.target.textContent = settings.sound ? '🔊 Звук: вкл' : '🔇 Звук: выкл'; });
+$('perm').addEventListener('click', async e=>{
+  unlockAudio();
+  if (!('Notification' in window)){ e.target.textContent = '⚠ Уведомления не поддерживаются'; return; }
+  const p = await Notification.requestPermission();
+  if (p === 'granted'){ e.target.textContent = '🔔 Уведомления: вкл'; notify('Готово','Уведомления о респе включены.'); }
+  else e.target.textContent = '🔕 Уведомления: выкл';
+});
+$('resetAll').addEventListener('click', resetAll);
+$('save').addEventListener('click', saveState);
+$('load').addEventListener('click', ()=> $('fileInp').click());
+$('fileInp').addEventListener('change', onFilePicked);
+$('detailClose').addEventListener('click', hideDetail);
+document.addEventListener('pointerdown', unlockAudio, { once:false });
+
+// map interactions
+const stage = $('mapStage');
+let dragging = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
+stage.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const rect = stage.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const factor = e.deltaY < 0 ? 1.18 : 1/1.18;
+  const s0 = mapView.s, s1 = Math.min(Math.max(s0*factor, mapView.minS), 8);
+  const mapX = (mx - mapView.tx)/s0, mapY = (my - mapView.ty)/s0;
+  mapView.s = s1; mapView.tx = mx - mapX*s1; mapView.ty = my - mapY*s1;
+  applyMapTransform();
+}, { passive:false });
+stage.addEventListener('pointerdown', e=>{
+  if (e.target.closest('.marker')) return;
+  dragging = true; startX = e.clientX; startY = e.clientY; startTx = mapView.tx; startTy = mapView.ty;
+  stage.classList.add('dragging'); stage.setPointerCapture(e.pointerId);
+});
+stage.addEventListener('pointermove', e=>{
+  if (!dragging) return;
+  mapView.tx = startTx + (e.clientX - startX); mapView.ty = startTy + (e.clientY - startY);
+  applyMapTransform();
+});
+function endDrag(){ dragging = false; stage.classList.remove('dragging'); }
+stage.addEventListener('pointerup', endDrag);
+stage.addEventListener('pointercancel', endDrag);
+$('markers').addEventListener('click', e=>{
+  const m = e.target.closest('.marker'); if (!m) return;
+  showDetail(m.dataset.id);
+});
+window.addEventListener('resize', resizeMap);
+
+/* ---------- init ---------- */
+$('modalOk').onclick = ()=>{
+  if (!modalCtx){ $('modal').classList.remove('show'); return; }
+  const raw = $('modalTime').value;
+  const t = raw ? new Date(raw).getTime() : NaN;
+  if (isNaN(t)){ alert('Укажи дату и время.'); return; }
+  const b = bossById(modalCtx.id);
+  if (!b){ $('modal').classList.remove('show'); modalCtx = null; return; }
+  const prev = state[modalCtx.id];
+  const mid = modalCtx.id;
+  if (modalCtx.mode === 'killed'){
+    if (t > Date.now() + 60*1000){ alert('Время убийства не может быть в будущем.'); return; }
+    state[mid] = freshState(mid, t, t + b.b*60000, t + (b.b + b.v)*60000, prev && prev.ch);
+  } else {
+    const k = (prev && prev.k) ? Math.min(prev.k, t) : Date.now();
+    state[mid] = freshState(mid, k, t, t, prev && prev.ch);
+  }
+  save(); renderAll(); markDirty(mid);
+  $('modal').classList.remove('show');
+  modalCtx = null;
+};
+$('modalCancel').onclick = ()=>{ $('modal').classList.remove('show'); modalCtx = null; };
+$('modal').addEventListener('click', e=>{ if (e.target === $('modal')){ $('modal').classList.remove('show'); modalCtx = null; } });
+document.addEventListener('keydown', e=>{
+  if (e.key === 'Escape' && $('modal').classList.contains('show')){ $('modal').classList.remove('show'); modalCtx = null; }
+});
+
+applySettingsToUI();
+renderAll();
+restoreMapView();
+if (settings.detail && bossById(settings.detail)) showDetail(settings.detail);
+if ('Notification' in window && Notification.permission === 'granted') $('perm').textContent = '🔔 Уведомления: вкл';
+else if ('Notification' in window && Notification.permission === 'denied') $('perm').textContent = '🔕 Уведомления: выкл';
+
+/* ---------- sync init ---------- */
+renderSync();
+$('syncBtn').addEventListener('click', ()=>{
+  if (!syncEnabled()){ alert('Общие таймеры не настроены.\nОткрой sync-setup.txt — там по шагам, что вписать в index.html.'); return; }
+  runSync();
+});
+if (syncEnabled()){
+  runSync();
+  setInterval(runSync, SYNC.pollMs);
+  window.addEventListener('online', runSync);
+  document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) runSync(); });
+}
+
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
