@@ -1,8 +1,11 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#171b22">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Рейд-боссы — карта и таймер респа (Lu4/Gamma)</title>
 <style>
 :root{
@@ -216,11 +219,83 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
 .modal .row{margin-top:12px;display:flex;gap:8px;justify-content:flex-end}
 
 @media (max-width: 900px){
-  .main{flex-direction:column;height:auto}
-  .map-stage{height:62vh;order:1}
-  .map-col{order:1}
-  .log-col{order:2;flex:none;height:34vh}
-  .list-col{order:3;flex:none;height:60vh}
+  :root{--pane-h:calc(100vh - 220px)}
+  @supports (height: 100dvh){
+    :root{--pane-h:calc(100dvh - 220px)}
+  }
+  .wrap{padding:8px 10px calc(74px + env(safe-area-inset-bottom))}
+  header.top h1{font-size:17px}
+  header.top{margin-bottom:0}
+  .sub{display:none}
+
+  /* компактные контролы в 2 строки */
+  .controls{gap:6px;margin-bottom:8px}
+  .controls input[type=search]{flex:1 1 100%;padding:7px 10px}
+  .controls select{flex:1 1 120px;padding:7px 8px;font-size:12.5px;min-width:0}
+  .lv{font-size:11.5px}
+  .lv input[type=number]{width:38px;padding:6px 4px}
+
+  /* тулбар прячется под «⚙» */
+  .toolbar{display:none;flex-wrap:wrap;gap:6px;margin-bottom:8px;
+    background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px}
+  .toolbar.open{display:flex}
+  .toolbar button,.toolbar label{font-size:12px;padding:7px 9px}
+  .toolbar .spacer{display:none}
+  .toolbar .counts{width:100%;order:-1}
+
+  /* одна панель за раз */
+  .main{flex-direction:column;height:auto;gap:0;min-height:0}
+  .map-col,.list-col,.log-col{flex:none;height:var(--pane-h);min-height:280px;order:0}
+  .main[data-mv="map"] .list-col,.main[data-mv="map"] .log-col,
+  .main[data-mv="list"] .map-col,.main[data-mv="list"] .log-col,
+  .main[data-mv="log"] .map-col,.main[data-mv="log"] .list-col{display:none}
+
+  .map-stage{height:auto}
+  .legend{gap:8px;font-size:11px;margin-top:-2px}
+  .map-hint{display:none}
+
+  /* тап-зона маркеров больше визуального кружка */
+  .marker::after{content:'';position:absolute;inset:-11px;border-radius:50%}
+  .marker{width:20px;height:20px}
+  .map-stage.no-labels .mlabel{display:none}
+
+  /* детали над панелью вкладок */
+  .detail{left:8px;right:8px;bottom:calc(72px + env(safe-area-inset-bottom));
+    transform:none;width:auto;max-height:52dvh;overflow-y:auto;padding:12px 14px}
+  .card .actions button{padding:9px 12px;font-size:12.5px}
+}
+
+/* ---- мобильная навигация ---- */
+.mobile-only{display:none}
+.tabbar{display:none}
+@media (max-width: 900px){
+  .mobile-only{display:inline-flex;align-items:center;justify-content:center}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:45;
+    background:var(--bg2);border-top:1px solid var(--line);
+    padding:5px 5px calc(5px + env(safe-area-inset-bottom));gap:3px;
+    -webkit-user-select:none;user-select:none}
+  .tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:7px 3px;font-size:10.5px;line-height:1.2;background:transparent;
+    border:1px solid transparent;border-radius:9px;color:var(--dim)}
+  .tabbar button i{font-style:normal;font-size:16px;line-height:1}
+  .tabbar button.active{color:var(--accent);background:rgba(77,163,255,.13);border-color:rgba(77,163,255,.35)}
+  .tabbar button:active{background:rgba(255,255,255,.06)}
+}
+
+/* телефон в альбомной ориентации: мало высоты — жмём шапку и контролы в одну строку */
+@media (max-width: 900px) and (max-height: 500px){
+  :root{--pane-h:calc(100vh - 150px)}
+  @supports (height: 100dvh){
+    :root{--pane-h:calc(100dvh - 150px)}
+  }
+  header.top h1{font-size:15px}
+  .controls{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-bottom:6px}
+  .controls::-webkit-scrollbar{display:none}
+  .controls input[type=search]{flex:0 0 150px}
+  .controls select{flex:0 0 auto}
+  .lv{flex:0 0 auto;white-space:nowrap}
+  .map-col,.list-col,.log-col{min-height:150px}
+  .legend{display:none}
 }
 </style>
 </head>
@@ -229,6 +304,8 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
   <header class="top">
     <h1>Рейд-боссы</h1>
     <span class="dim" id="total">—</span>
+    <span style="flex:1"></span>
+    <button id="mobileCfg" class="ghost mobile-only" title="Настройки, уведомления, синхронизация">⚙</button>
   </header>
   <div class="sub">Клик по точке — детали и «убил»; время смерти можно вписать вручную. У отмеченных боссов на карте виден таймер до респа.</div>
 
@@ -250,7 +327,7 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
     </select>
   </div>
 
-  <div class="toolbar">
+  <div class="toolbar" id="toolbar">
     <button id="perm" class="ghost">🔔 Включить уведомления</button>
     <button id="sound" class="ghost">🔊 Звук: вкл</button>
     <label class="lv" style="gap:6px">предупредить за <input type="number" id="prewarn" min="0" max="120" value="0" style="width:46px"> мин</label>
@@ -308,10 +385,18 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
           Фильтры, поиск, сортировка и положение карты запоминаются между запусками.
           Кнопка «☁» — общие таймеры для всех, кто открыл ссылку (настройка в sync-setup.txt).
           Слева — лог: кто и когда убил, проверил или сбросил. Своё имя — кнопка «✎».
+          На телефоне — вкладки внизу и кнопка «⚙» для настроек; карта зумится двумя пальцами.
         </div>
       </div>
     </div>
   </div>
+
+  <nav class="tabbar" id="tabbar">
+    <button data-view="map" class="active"><i>🗺</i>Карта</button>
+    <button data-view="list"><i>📋</i>Боссы</button>
+    <button data-view="log"><i>📜</i>Лог</button>
+    <button data-view="stats"><i>📊</i>Стата</button>
+  </nav>
 </div>
 
 <div class="detail is-hidden" id="detail">
@@ -1134,8 +1219,14 @@ function openStats(id){
   else if (!statsSel || !statsIndex.has(statsSel)) statsSel = null;
   renderStats();
   loadKills(false);
+  document.querySelectorAll('#tabbar button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.view === 'stats');
+  });
 }
-function closeStats(){ statsOpen = false; $('stats').classList.remove('show'); }
+function closeStats(){
+  statsOpen = false; $('stats').classList.remove('show');
+  if (typeof syncTabbar === 'function') syncTabbar();
+}
 function exportStatsCsv(){
   const rows = [['boss_id','boss','killed_at_iso','killed_at_ms','actor','interval_ms']];
   Array.from(statsIndex.values()).forEach(st=>{
@@ -1330,6 +1421,9 @@ function resizeMap(){
 function applyMapTransform(){
   $('mapInner').style.transform = `translate(${mapView.tx}px, ${mapView.ty}px) scale(${mapView.s})`;
   $('mapInner').style.setProperty('--invS', (1/mapView.s).toFixed(4));
+  /* на телефоне подписи всех 161 точек превращаются в кашу — показываем по мере приближения */
+  const st = $('mapStage');
+  if (st) st.classList.toggle('no-labels', isMobile() && mapView.s < mapView.minS * 1.55);
   persistMapSoon();
 }
 let mapSaveTimer = null;
@@ -1559,6 +1653,9 @@ function pad(n){ return String(n).padStart(2,'0'); }
 
 /* ---------- tick ---------- */
 function tick(){
+  /* страховка: если браузер не прислал resize/matchMedia при повороте экрана — замечаем сами */
+  const mb = isMobile();
+  if (typeof wasMobile !== 'undefined' && mb !== wasMobile){ wasMobile = mb; onLayoutModeChange(); }
   const now = Date.now();
   for (const id in state){
     const s = state[id], b = bossById(id); if (!b) continue;
@@ -1642,36 +1739,161 @@ document.addEventListener('pointerdown', unlockAudio, { once:false });
 // map interactions
 const stage = $('mapStage');
 let dragging = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
+const activePts = new Map();
+let pinch = null;
+let lastTap = 0, lastTapX = 0, lastTapY = 0, movedSinceDown = false;
+
+function clampScale(v){ return Math.min(Math.max(v, mapView.minS), 8); }
+function zoomAt(clientX, clientY, factor){
+  const rect = stage.getBoundingClientRect();
+  const mx = clientX - rect.left, my = clientY - rect.top;
+  const s0 = mapView.s, s1 = clampScale(s0 * factor);
+  const mapX = (mx - mapView.tx) / s0, mapY = (my - mapView.ty) / s0;
+  mapView.s = s1;
+  mapView.tx = mx - mapX * s1;
+  mapView.ty = my - mapY * s1;
+  applyMapTransform();
+}
+
 stage.addEventListener('wheel', e=>{
   e.preventDefault();
-  const rect = stage.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  const factor = e.deltaY < 0 ? 1.18 : 1/1.18;
-  const s0 = mapView.s, s1 = Math.min(Math.max(s0*factor, mapView.minS), 8);
-  const mapX = (mx - mapView.tx)/s0, mapY = (my - mapView.ty)/s0;
-  mapView.s = s1; mapView.tx = mx - mapX*s1; mapView.ty = my - mapY*s1;
-  applyMapTransform();
+  zoomAt(e.clientX, e.clientY, e.deltaY < 0 ? 1.18 : 1/1.18);
 }, { passive:false });
+
 stage.addEventListener('pointerdown', e=>{
   if (e.target.closest('.marker')) return;
-  dragging = true; startX = e.clientX; startY = e.clientY; startTx = mapView.tx; startTy = mapView.ty;
-  stage.classList.add('dragging'); stage.setPointerCapture(e.pointerId);
+  activePts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  try { stage.setPointerCapture(e.pointerId); } catch(err){}
+
+  if (activePts.size === 2){
+    /* второй палец — начинаем пинч, тянуть уже не надо */
+    dragging = false;
+    stage.classList.remove('dragging');
+    const [a, b] = Array.from(activePts.values());
+    pinch = {
+      dist: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      cx: (a.x + b.x) / 2,
+      cy: (a.y + b.y) / 2,
+      s: mapView.s, tx: mapView.tx, ty: mapView.ty
+    };
+  } else if (activePts.size === 1){
+    dragging = true; movedSinceDown = false;
+    startX = e.clientX; startY = e.clientY; startTx = mapView.tx; startTy = mapView.ty;
+    stage.classList.add('dragging');
+  }
 });
+
 stage.addEventListener('pointermove', e=>{
+  const prev = activePts.get(e.pointerId);
+  if (!prev) return;
+  activePts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pinch && activePts.size >= 2){
+    const [a, b] = Array.from(activePts.values());
+    const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const rect = stage.getBoundingClientRect();
+    const ns = clampScale(pinch.s * (dist / pinch.dist));
+    /* точка под пальцами остаётся на месте */
+    const mapX = (pinch.cx - rect.left - pinch.tx) / pinch.s;
+    const mapY = (pinch.cy - rect.top - pinch.ty) / pinch.s;
+    mapView.s = ns;
+    mapView.tx = (cx - rect.left) - mapX * ns;
+    mapView.ty = (cy - rect.top) - mapY * ns;
+    applyMapTransform();
+    return;
+  }
+
   if (!dragging) return;
-  mapView.tx = startTx + (e.clientX - startX); mapView.ty = startTy + (e.clientY - startY);
+  const dx = e.clientX - startX, dy = e.clientY - startY;
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) movedSinceDown = true;
+  mapView.tx = startTx + dx; mapView.ty = startTy + dy;
   applyMapTransform();
 });
-function endDrag(){ dragging = false; stage.classList.remove('dragging'); }
+
+function endDrag(e){
+  if (e && e.pointerId !== undefined) activePts.delete(e.pointerId);
+  if (activePts.size < 2) pinch = null;
+  if (activePts.size === 0){ dragging = false; stage.classList.remove('dragging'); }
+}
 stage.addEventListener('pointerup', endDrag);
 stage.addEventListener('pointercancel', endDrag);
+stage.addEventListener('pointerleave', e=>{ if (activePts.size === 0){ dragging = false; stage.classList.remove('dragging'); } });
+
+/* двойной тап — приблизить (с телефона без колеса мыши иначе неудобно) */
+stage.addEventListener('pointerup', e=>{
+  if (movedSinceDown) return;
+  if (e.target.closest('.marker')) return;
+  const now = Date.now();
+  const near = Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < 30;
+  if (now - lastTap < 320 && near){
+    zoomAt(e.clientX, e.clientY, mapView.s / mapView.minS > 3 ? 0.55 : 1.8);
+    lastTap = 0;
+  } else {
+    lastTap = now; lastTapX = e.clientX; lastTapY = e.clientY;
+  }
+});
+
 $('markers').addEventListener('click', e=>{
   const m = e.target.closest('.marker'); if (!m) return;
   showDetail(m.dataset.id);
 });
-window.addEventListener('resize', resizeMap);
+
+/* ---------- мобильная навигация ---------- */
+function isMobile(){ return window.matchMedia('(max-width: 900px)').matches; }
+function syncTabbar(){
+  const main = document.querySelector('.main');
+  const view = (main && main.dataset.mv) || 'map';
+  document.querySelectorAll('#tabbar button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.view === view);
+  });
+}
+function setMobileView(v){
+  const main = document.querySelector('.main');
+  if (!main) return;
+  if (v === 'stats'){ openStats(statsSel); return; }
+  main.dataset.mv = v;
+  settings.mv = v; saveSet();
+  syncTabbar();
+  if (v === 'map'){
+    requestAnimationFrame(()=>{
+      if (!mapView.s) restoreMapView(); else resizeMap();
+      applyMapTransform();
+    });
+  } else if (v === 'list'){
+    renderList();
+  } else if (v === 'log'){
+    renderLog(); renderPresence();
+  }
+}
+function onLayoutModeChange(){
+  const main = document.querySelector('.main');
+  if (!main) return;
+  if (isMobile()) main.dataset.mv = settings.mv || 'map';
+  else delete main.dataset.mv;
+  syncTabbar();
+  requestAnimationFrame(()=>{ resizeMap(); });
+}
+let wasMobile = isMobile();
+window.addEventListener('resize', ()=>{
+  const m = isMobile();
+  if (m !== wasMobile){ wasMobile = m; onLayoutModeChange(); }
+  resizeMap();
+});
+/* главный триггер смены раскладки: сам медиазапрос (надёжнее, чем resize) */
+try {
+  const mq = window.matchMedia('(max-width: 900px)');
+  const onMq = ()=>{ wasMobile = mq.matches; onLayoutModeChange(); };
+  if (mq.addEventListener) mq.addEventListener('change', onMq);
+  else if (mq.addListener) mq.addListener(onMq);
+} catch(e){}
+window.addEventListener('orientationchange', ()=>{
+  setTimeout(()=>{ wasMobile = isMobile(); onLayoutModeChange(); }, 260);
+});
 
 /* ---------- init ---------- */
+if (isMobile()) document.querySelector('.main').dataset.mv = settings.mv || 'map';
+syncTabbar();
 $('modalOk').onclick = ()=>{
   if (!modalCtx){ $('modal').classList.remove('show'); return; }
   const raw = $('modalTime').value;
@@ -1720,6 +1942,10 @@ $('logBtn').addEventListener('click', ()=>{
 });
 $('actorBtn').addEventListener('click', askActor);
 $('presenceBtn').addEventListener('click', togglePresenceList);
+$('mobileCfg').addEventListener('click', ()=> $('toolbar').classList.toggle('open'));
+document.querySelectorAll('#tabbar button').forEach(b=>{
+  b.addEventListener('click', ()=> setMobileView(b.dataset.view));
+});
 $('statsBtn').addEventListener('click', ()=>openStats(statsSel));
 $('statsClose').addEventListener('click', closeStats);
 $('statsRefresh').addEventListener('click', ()=>{ loadKills(true); });
