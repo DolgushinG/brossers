@@ -26,10 +26,10 @@
 
 Шаг 2. Таблицы
 --------------
-(rb_kills уже создана. Осталось создать rb_log — см. блок «ТОЛЬКО ЛОГ» ниже)
+(rb_kills и rb_log уже созданы. Осталось добавить колонку killed_at — блок «ТОЛЬКО СТАТИСТИКА» ниже)
 1. В проекте слева открой: SQL Editor → New query.
 2. Если настраиваешь с нуля — вставь ОБА блока ниже и нажми Run.
-   Если rb_kills уже есть (твой случай) — вставь ТОЛЬКО блок «ТОЛЬКО ЛОГ».
+   Если таблицы уже есть (твой случай) — вставь блок «ТОЛЬКО СТАТИСТИКА».
    (Повторный запуск первого блока даст ошибку «policy already exists» и ничего не испортит.)
 
 -- ---------- начало SQL ----------
@@ -54,13 +54,17 @@ create policy "rb update" on public.rb_kills for update using (true) with check 
 -- журнал событий: кто когда что сделал (только чтение и добавление)
 create table if not exists public.rb_log (
   id        bigserial primary key,
-  at        bigint not null,          -- время события, мс
+  at        bigint not null,          -- когда нажали кнопку, мс
   action    text   not null,          -- kill / time / fixed / check / reset / resetAll / import
   boss_id   text,
   boss_name text,
   actor     text,                     -- имя игрока
-  detail    text
+  detail    text,
+  killed_at bigint                    -- фактическое время убийства (для статистики)
 );
+
+-- если таблица уже была создана раньше — добавить колонку:
+alter table public.rb_log add column if not exists killed_at bigint;
 
 create index if not exists rb_log_at_idx on public.rb_log (at desc);
 
@@ -71,6 +75,12 @@ drop policy if exists "log insert" on public.rb_log;
 create policy "log read"   on public.rb_log for select using (true);
 create policy "log insert" on public.rb_log for insert with check (true);
 -- ---------- конец SQL: ТОЛЬКО ЛОГ ----------
+
+-- ---------- начало SQL: ТОЛЬКО СТАТИСТИКА ----------
+-- одна колонка, без которой интервалы считаются по времени нажатия кнопки,
+-- а не по фактическому времени убийства
+alter table public.rb_log add column if not exists killed_at bigint;
+-- ---------- конец SQL: ТОЛЬКО СТАТИСТИКА ----------
 
 Шаг 3. Ключи в index.html
 -------------------------
