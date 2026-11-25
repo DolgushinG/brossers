@@ -41,10 +41,13 @@ create policy "rb update" on public.rb_kills for update using (true) with check 
 
 Шаг 3. Ключи в index.html
 -------------------------
-1. В Supabase: Project Settings (шестерёнка) → API.
-2. Скопируй два значения:
-   - Project URL       — вида https://abcdefghijkl.supabase.co
-   - anon public key   — длинная строка (НЕ service_role!).
+1. В Supabase: Project Settings (шестерёнка) → API (в новых проектах — API Keys).
+2. Нужны два значения:
+   - Project URL — вида https://abcdefghijkl.supabase.co
+   - публичный ключ. Подойдёт любой из двух:
+       * новый: "Publishable key" — начинается с sb_publishable_
+       * старый: "anon public" — длинная строка, начинается с eyJ
+     НИ В КОЕМ СЛУЧАЕ не бери secret / service_role — этот даёт полный доступ к базе.
 3. Открой index.html любым редактором (Блокнот подойдёт) и найди строки:
 
 const SYNC = {
@@ -58,13 +61,16 @@ const SYNC = {
 
 const SYNC = {
   url: 'https://abcdefghijkl.supabase.co',
-  key: 'eyJhbGciOi...твоя-длинная-строка...',
+  key: 'sb_publishable_твой-ключ',
   table: 'rb_kills',
   pollMs: 15000
 };
 
 4. Сохрани файл и открой в браузере. Кнопка «☁» должна показать «☁ общие · ЧЧ:ММ».
-   Если показывает «☁ нет связи» — либо ключи неверные, либо нет интернета.
+   Что означает, если не так:
+   - «☁ нет связи» с подсказкой «ключ не подошёл» — не тот ключ (secret вместо publishable).
+   - «☁ нет связи» с «нет таблицы rb_kills» — не выполнен SQL из шага 2.
+   - просто «☁ нет связи» — нет интернета или неверный Project URL.
 
 Как выложить в интернет (чтобы была ссылка)
 -------------------------------------------

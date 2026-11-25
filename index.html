@@ -332,7 +332,10 @@ function nextU(id){
 }
 function syncUrl(qs){ return SYNC.url.replace(/\/+$/,'') + '/rest/v1/' + SYNC.table + qs; }
 async function syncReq(qs, method, body, prefer){
-  const headers = { apikey: SYNC.key, Authorization: 'Bearer ' + SYNC.key, 'Content-Type': 'application/json' };
+  const headers = { apikey: SYNC.key, 'Content-Type': 'application/json' };
+  /* Ключ нового формата (sb_publishable_…) работает только в apikey,
+     Bearer с ним даёт 401. Старый JWT-ключ (eyJ…) нужен в обоих местах. */
+  if (SYNC.key.indexOf('eyJ') === 0) headers.Authorization = 'Bearer ' + SYNC.key;
   if (prefer) headers.Prefer = prefer;
   const res = await fetch(syncUrl(qs), {
     method: method || 'GET',
@@ -340,7 +343,11 @@ async function syncReq(qs, method, body, prefer){
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: 'no-store'
   });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (!res.ok){
+    if (res.status === 401 || res.status === 403) throw new Error('ключ не подошёл (проверь SYNC.key)');
+    if (res.status === 404) throw new Error('нет таблицы ' + SYNC.table + ' (выполни SQL из sync-setup.txt)');
+    throw new Error('HTTP ' + res.status);
+  }
   return res;
 }
 async function runSync(){
