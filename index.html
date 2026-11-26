@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -201,6 +201,9 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
 .card.st-stale{border-color:#b06bf0;background:linear-gradient(180deg,rgba(176,107,240,.10),rgba(176,107,240,0) 70%),var(--bg3)}
 .card .row1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .name{font-weight:600;font-size:14px}
+.fav{background:transparent;border:none;padding:0 4px;font-size:15px;cursor:pointer;color:var(--dim2);line-height:1;flex:0 0 auto}
+.fav:hover{color:var(--amber)}
+.fav.on{color:var(--amber)}
 .loc{color:var(--dim);font-size:12px}
 .resp{color:var(--dim2);font-size:11.5px}
 .binfo{margin-top:8px;border:1px solid var(--line);border-radius:9px;background:var(--bg3);padding:8px 10px;display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
@@ -362,6 +365,7 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
       <option value="respawn">сорт: респ раньше</option>
       <option value="name">сорт: имя</option>
     </select>
+    <label class="lv" style="gap:6px"><input type="checkbox" id="favOnly"> ⭐ избранные</label>
   </div>
 
   <div class="toolbar" id="toolbar">
@@ -507,7 +511,129 @@ const bossById = id => BOSSES.find(b => b.i === id);
    Ключ — b.i. Поля: hp, patk, pdef, mdef (числа), drop, exp (текст).
    Пустое поле показывает «—». */
 const BOSS_INFO = {
-  // '25372-discarded-guardian': { hp:12000, patk:320, pdef:220, mdef:180, drop:'Scroll: Enchant Armor (D)', exp:'≈ 120k' },
+  '25372-discarded-guardian': { hp:34766, patk:60, pdef:757, mdef:307, exp:'436,632', drop:'Puma Skin Shirt, Puma Skin Gaiters, Saber, Heavy Sword, Saber Blade, Heavy Sword Edge' },
+  '25378-madness-beast': { hp:17383, patk:29, pdef:757, mdef:307, exp:'436,632', drop:'Cursed Tunic, Cursed Stockings, Bagh-Nakh, Blessed Scroll of Resurrection for Pets, Scroll: Enchant Weapon (Grade D), Scroll: Enchant Armor (Grade D)' },
+  '25375-zombie-lord-ferkel': { hp:17383, patk:29, pdef:757, mdef:307, exp:'436,632', drop:'Ring Mail Breastplate, Iron Plate Gaiters, Hand Axe, Scalpel, Bone Staff, Blessed Scroll: Enchant Weapon (Grade D)' },
+  '25380-kaysha-herald-of-icarus': { hp:18330, patk:40, pdef:788, mdef:319, exp:'578,450', drop:'Lion Skin Shirt, Lion Skin Gaiters, Pike, Blessed Scroll of Resurrection for Pets, Scroll: Enchant Weapon (Grade D), Scroll: Enchant Armor (Grade D)' },
+  '25373-malex-herald-of-dagoniel': { hp:18330, patk:40, pdef:788, mdef:319, exp:'578,450', drop:'Bronze Helmet, Aspis, Divine Tome, Blessed Scroll: Enchant Weapon (Grade D), Blessed Scroll: Enchant Armor (Grade D), Blessed Scroll of Resurrection for Pets' },
+  '25146-serpent-demon-bifrons': { hp:18330, patk:40, pdef:788, mdef:319, exp:'578,450', drop:'Enchanted Earring, Enchanted Ring, Enchanted Necklace, Enchanted Necklace Chain, Long Bow, Elven Bow' },
+  '25357-sukar-wererat-chief': { hp:18330, patk:40, pdef:788, mdef:319, exp:'578,450', drop:'Leather Gauntlets, Blue Buckskin Boots, Poniard Dagger, Blessed Scroll of Resurrection for Pets, Scroll: Enchant Weapon (Grade D), Scroll: Enchant Armor (Grade D)' },
+  '25001-greyclaw-kutus': { hp:23712, patk:59, pdef:856, mdef:345, exp:'714,842', drop:'Scale Mail, Scale Gaiters, Scale Mail Fragment, Scale Gaiters Fragment, Bastard Sword, Spinebone Sword' },
+  '25366-kuroboros-priest': { hp:20324, patk:51, pdef:856, mdef:345, exp:'599,426', drop:'Enchanted Earring, Enchanted Ring, Enchanted Necklace, Enchanted Necklace Chain, Single-Edged Jamadhr, Blessed Scroll: Enchant Weapon (Grade D)' },
+  '25362-tracker-leader-sharuk': { hp:20324, patk:51, pdef:856, mdef:345, exp:'599,426', drop:'Elven Tunic, White Tunic, Mystic''s Tunic, Elven Stockings, Dark Stockings, Mystic''s Stockings' },
+  '25060-unrequited-kael': { hp:21374, patk:54, pdef:891, mdef:361, exp:'606,917', drop:'Leather Gauntlets, Blue Buckskin Boots, Long Bow, Elven Bow, Elven Bow Shaft, Blessed Scroll of Resurrection for Pets' },
+  '25426-betrayer-of-urutu-freki': { hp:22463, patk:60, pdef:927, mdef:377, exp:'612,533', drop:'Helmet, Hoplon, Gastraphetes, Gastraphetes Shaft, Scroll: Enchant Armor (Grade D)' },
+  '25166-ikuntai': { hp:48671, patk:132, pdef:927, mdef:377, exp:'1.3M', drop:'Tiger''s Eye Earring, Black Pearl Ring, Near Forest Necklace, Tiger''s Eye Earring Stone, Spiked Club, Staff of Magic' },
+  '25019-pan-dryad': { hp:52415, patk:144, pdef:927, mdef:377, exp:'730,470', drop:'Mithril Banded Mail, Reinforced Leather Shirt, Mithril Banded Gaiters, Reinforced Leather Gaiters, Mithril Banded Mail Material, Mithril Banded Gaiters Material' },
+  '25076-princess-molrang': { hp:26207, patk:72, pdef:927, mdef:377, exp:'730,470', drop:'Mithril Breastplate, Compound Scale Mail, Dwarven Scale Mail, Mithril Gaiters, Blast Plate, Compound Scale Gaiters' },
+  '25369-soul-scavenger': { hp:22463, patk:60, pdef:927, mdef:377, exp:'612,533', drop:'Gauntlets, Iron Boots, Reinforced Leather Boots, Boots of Knowledge, Reinforced Leather Gloves, Gloves of Knowledge' },
+  '25149-zombie-lord-crowl': { hp:26207, patk:108, pdef:927, mdef:377, exp:'856,023', drop:'Tunic of Knowledge, Stockings of Knowledge, Sword of Magic, Sword of Occult, Two-Handed Sword, Crimson Sword' },
+  '25365-patriarch-kuroboros': { hp:47184, patk:134, pdef:965, mdef:390, exp:'621,174', drop:'Tunic of Knowledge, Stockings of Knowledge, War Hammer, Dwarven Pike, Blessed Scroll of Resurrection for Pets' },
+  '25360-tiger-hornet': { hp:23592, patk:67, pdef:965, mdef:390, exp:'621,174', drop:'Mithril Breastplate, Compound Scale Mail, Dwarven Scale Mail, Mithril Gaiters, Blast Plate, Compound Scale Gaiters' },
+  '25272-partisan-leader-talakin': { hp:60567, patk:284, pdef:1043, mdef:423, exp:'879,285', drop:'Gauntlets, Iron Boots, Reinforced Leather Boots, Boots of Knowledge, Reinforced Leather Gloves, Gloves of Knowledge' },
+  '25038-tirak': { hp:30283, patk:93, pdef:1043, mdef:423, exp:'750,326', drop:'Tiger''s Eye Earring, Black Pearl Ring, Near Forest Necklace, Tiger''s Eye Earring Stone, Sword of Magic, Sword of Occult' },
+  '25095-elf-renoa': { hp:31723, patk:103, pdef:1085, mdef:440, exp:'755,659', drop:'Manticore Skin Shirt, Manticore Skin Gaiters, Manticore Skin Shirt Texture, Manticore Skin Gaiters Pattern, Strengthened Long Bow, Strengthened Long Bow Shaft' },
+  '25188-apepi': { hp:66433, patk:225, pdef:1126, mdef:457, exp:'759,553', drop:'Kite Shield, Brigandine Helmet, Brigandine Shield, Kite Shield Fragment, Brigandine Helmet Design, Brigandine Shield Fragment' },
+  '25112-beleth-s-agent-meana': { hp:33216, patk:167, pdef:1126, mdef:457, exp:'890,100', drop:'Elven Earring, Elven Ring, Elven Necklace, Elven Earring Beads, Elven Ring Piece, Elven Necklace Beads' },
+  '25079-cat-s-eye-bandit': { hp:61688, patk:205, pdef:1126, mdef:457, exp:'1.3M', drop:'Mithril Tunic, Mithril Stockings, Mithril Tunic Fabric, Mithril Stocking Design, Crucifix of Blood, Crucifix of Blood Piece' },
+  '25352-giant-wasteland-basilisk': { hp:28471, patk:95, pdef:1126, mdef:457, exp:'636,918', drop:'Manticore Skin Shirt, Manticore Skin Gaiters, Manticore Skin Shirt Texture, Manticore Skin Gaiters Pattern, Bich''Hwa, Bich''Hwa Edge' },
+  '25169-ragraman': { hp:123377, patk:410, pdef:1126, mdef:457, exp:'1.3M', drop:'Rip Gauntlets, Boots of Power, Manticore Skin Boots, Brigandine Boots, Elven Mithril Boots, Manticore Skin Gloves' },
+  '25004-turek-mercenary-captain': { hp:66433, patk:225, pdef:1126, mdef:457, exp:'1.4M', drop:'Brigandine Tunic, Mithril Scale Gaiters, Brigandine Gaiters, Brigandine Temper, Mithril Scale Gaiters Material, Brigandine Gaiters Material' },
+  '25401-skyla': { hp:31134, patk:135, pdef:1214, mdef:491, exp:'810,271', drop:'Mithril Tunic, Mithril Stockings, Mithril Tunic Fabric, Mithril Stocking Design, Maingauche, Cursed Maingauche' },
+  '25404-corsair-captain-kylon': { hp:32522, patk:145, pdef:1260, mdef:511, exp:'825,587', drop:'Square Shield, Plate Helmet, Plate Shield, Square Shield Fragment, Plate Helmet Design, Plate Shield Fragment' },
+  '25391-nurka-s-messenger': { hp:65044, patk:293, pdef:1260, mdef:511, exp:'825,587', drop:'Mithril Gloves, Ogre Power Gauntlets, Assault Boots, Salamander Skin Boots, Plate Boots, Sage''s Worn Gloves' },
+  '25128-vuku-grand-seer-gharmash': { hp:37942, patk:171, pdef:1260, mdef:511, exp:'984,556', drop:'Omen Beast''s Eye Earring, Mithril Ring, Necklace of Darkness, Omen Beast''s Eye Earring Gemstone, Mithril Ring Wire, Necklace of Darkness Gem' },
+  '25020-breka-warlock-pastu': { hp:39603, patk:277, pdef:1307, mdef:529, exp:'1.2M', drop:'Salamander Skin Mail, Salamander Skin Mail Texture, Bonebreaker, Atuba Hammer, Ghost Staff, Staff of Life' },
+  '25189-cronos-s-servitor-mumu': { hp:39603, patk:185, pdef:1307, mdef:529, exp:'1M', drop:'Sage''s Rag, Sage''s Rag Lining, Light Crossbow, Light Crossbow Shaft, Scroll: Enchant Armor (Grade C)' },
+  '25383-revenant-of-sir-calibus': { hp:33945, patk:158, pdef:1307, mdef:529, exp:'840,194', drop:'Omen Beast''s Eye Earring, Mithril Ring, Necklace of Darkness, Omen Beast''s Eye Earring Gemstone, Mithril Ring Wire, Necklace of Darkness Gem' },
+  '25063-chertuba-of-great-soul': { hp:82617, patk:400, pdef:1355, mdef:550, exp:'1M', drop:'Square Shield, Plate Helmet, Plate Shield, Square Shield Fragment, Plate Helmet Design, Plate Shield Fragment' },
+  '25354-gargoyle-lord-sirocco': { hp:41308, patk:298, pdef:1355, mdef:550, exp:'1.2M', drop:'Square Shield, Plate Helmet, Plate Shield, Square Shield Fragment, Plate Helmet Design, Plate Shield Fragment' },
+  '25388-red-eye-captain-trakia': { hp:35407, patk:168, pdef:1355, mdef:550, exp:'854,153', drop:'Salamander Skin Mail, Salamander Skin Mail Texture, Glaive, Glaive Edge, Blessed Scroll: Enchant Armor (Grade C)' },
+  '25041-remmel': { hp:41308, patk:198, pdef:1355, mdef:550, exp:'1M', drop:'Mithril Gloves, Ogre Power Gauntlets, Assault Boots, Salamander Skin Boots, Plate Boots, Sage''s Worn Gloves' },
+  '25098-sejarr-s-servitor': { hp:82617, patk:400, pdef:1355, mdef:550, exp:'1M', drop:'Salamander Skin Mail, Salamander Skin Mail Texture, Claymore, Elven Long Sword, Claymore Blade, Elven Long Sword Blade' },
+  '25223-soul-collector-acheron': { hp:41308, patk:198, pdef:1355, mdef:550, exp:'1M', drop:'Mithril Gloves, Ogre Power Gauntlets, Assault Boots, Salamander Skin Boots, Plate Boots, Sage''s Worn Gloves' },
+  '25185-tasaba-patriarch-hellena': { hp:41308, patk:298, pdef:1355, mdef:550, exp:'1.2M', drop:'Omen Beast''s Eye Earring, Mithril Ring, Necklace of Darkness, Omen Beast''s Eye Earring Gemstone, Mithril Ring Wire, Necklace of Darkness Gem' },
+  '25211-sebek': { hp:43053, patk:325, pdef:1405, mdef:568, exp:'1.2M', drop:'Omen Beast''s Eye Earring, Mithril Ring, Necklace of Darkness, Omen Beast''s Eye Earring Gemstone, Mithril Ring Wire, Necklace of Darkness Gem' },
+  '25415-nakondas': { hp:35407, patk:168, pdef:1355, mdef:550, exp:'854,153', drop:'Sage''s Rag, Sage''s Rag Lining, Bonebreaker, Atuba Hammer, Ghost Staff, Staff of Life' },
+  '25170-lizardmen-leader-hellion': { hp:46672, patk:249, pdef:1507, mdef:611, exp:'1.1M', drop:'Eldarake, Chain Hood, Chain Shield, Eldarake Temper, Chain Hood Pattern, Chain Shield Fragment' },
+  '25394-premo-prime': { hp:80010, patk:422, pdef:1507, mdef:611, exp:'892,440', drop:'Chain Mail Shirt, Chain Gaiters, Chain Mail Shirt Material, Chain Gaiters Part, Scythe, Orcish Glaive' },
+  '25082-leader-of-cat-gang': { hp:48537, patk:267, pdef:1560, mdef:633, exp:'1.1M', drop:'Karmian Tunic, Karmian Stockings, Karmian Tunic Pattern, Karmian Stocking Design, Flamberge, Stormbringer' },
+  '25487-water-spirit-lian': { hp:43238, patk:241, pdef:1615, mdef:655, exp:'915,400', drop:'Mithril Boots, Chain Boots, Karmian Boots, Plated Leather Boots, Dwarven Chain Boots, Boots of Seal' },
+  '25490-gwindorr': { hp:43238, patk:241, pdef:1615, mdef:655, exp:'915,400', drop:'Eldarake, Chain Hood, Chain Shield, Eldarake Temper, Chain Hood Pattern, Chain Shield Fragment' },
+  '25134-leto-chief-talkin': { hp:50445, patk:426, pdef:1615, mdef:655, exp:'1.3M', drop:'Eldarake, Chain Hood, Chain Shield, Eldarake Temper, Chain Hood Pattern, Chain Shield Fragment' },
+  '25064-wizard-of-storm-teruk': { hp:50445, patk:285, pdef:1615, mdef:655, exp:'1.1M', drop:'Moonstone Earring, Aquastone Ring, Aquastone Necklace, Moonstone Earring Wire, Aquastone Ring Wire, Aquastone Necklace Chain' },
+  '25214-fafurion-s-page-sika': { hp:50445, patk:285, pdef:1615, mdef:655, exp:'1.1M', drop:'Karmian Tunic, Karmian Stockings, Karmian Tunic Pattern, Karmian Stocking Design, Scythe, Orcish Glaive' },
+  '25410-road-scavenger-leader': { hp:50445, patk:426, pdef:1615, mdef:655, exp:'1.3M', drop:'Moonstone Earring, Aquastone Ring, Aquastone Necklace, Moonstone Earring Wire, Aquastone Ring Wire, Aquastone Necklace Chain' },
+  '25155-shaman-king-selu': { hp:100890, patk:567, pdef:1615, mdef:655, exp:'2M', drop:'Mithril Shirt, Tempered Mithril Gaiters, Mithril Shirt Fabric, Tempered Mithril Gaiters Fragment, Cursed Dagger, Dark Elven Dagger' },
+  '25208-water-couatle-ateka': { hp:50445, patk:426, pdef:1615, mdef:655, exp:'1.3M', drop:'Chain Mail Shirt, Chain Gaiters, Chain Mail Shirt Material, Chain Gaiters Part, Scroll: Enchant Weapon (Grade C), Scroll: Enchant Armor (Grade C)' },
+  '25088-crazy-mechanic-golem': { hp:225544, patk:1793, pdef:1785, mdef:723, exp:'2.5M', drop:'Dwarven Chain Mail Shirt, Dwarven Chain Gaiters, Dwarven Chain Mail Shirt Material, Dwarven Chain Gaiters Material, Stiletto, Soulfire Dirk' },
+  '25192-earth-protector-panathen': { hp:56386, patk:670, pdef:1785, mdef:723, exp:'1.6M', drop:'Robe of Seal, Robe of Seal Fabric, Horn of Glory, Horn of Glory Fragment, Blessed Scroll: Enchant Armor (Grade C)' },
+  '25007-retreat-spider-cletu': { hp:100965, patk:744, pdef:1727, mdef:700, exp:'2.3M', drop:'Plated Leather, Plated Leather Gaiters, Rind Leather Armor, Rind Leather Gaiters, Plated Leather Fragment, Plated Leather Gaiters Material' },
+  '25418-dread-avenger-kraven': { hp:50083, patk:416, pdef:1844, mdef:747, exp:'1.1M', drop:'Tower Shield, Composite Shield, Composite Helmet, Shining Circlet, Tower Shield Fragment, Composite Shield Fragment' },
+  '25431-flamestone-golem': { hp:50083, patk:416, pdef:1844, mdef:747, exp:'1.1M', drop:'Composite Armor, Fist Blade, Composite Armor Temper, Fist Blade Piece, Greater Dye of Mental Strength \u003cMen+3 Wit-3>, Greater Dye of Wit \u003cWit+3 Int-3>' },
+  '25099-rotting-tree-repiro': { hp:58430, patk:491, pdef:1844, mdef:747, exp:'1.3M', drop:'Composite Boots, Mithril Gauntlets, Composite Boots Part, Mithril Gauntlets Design, Caliburs, Sword of Delusion' },
+  '25057-beacon-of-blue-sky': { hp:60514, patk:537, pdef:1905, mdef:773, exp:'1.4M', drop:'Composite Boots, Mithril Gauntlets, Composite Boots Part, Mithril Gauntlets Design, Grace Dagger, Dark Screamer' },
+  '25260-iron-giant-totem': { hp:112383, patk:973, pdef:1905, mdef:773, exp:'2.4M', drop:'Tower Shield, Composite Shield, Composite Helmet, Shining Circlet, Tower Shield Fragment, Composite Shield Fragment' },
+  '25102-shacram': { hp:121028, patk:1602, pdef:1905, mdef:773, exp:'1.6M', drop:'Earring of Binding, Ring of Ages, Necklace of Mermaid, Earring of Binding Gemstone, Ring of Ages Gemstone, Necklace of Mermaid Teardrop' },
+  '25438-thief-kelbar': { hp:50083, patk:416, pdef:1844, mdef:747, exp:'1.1M', drop:'Composite Armor, Composite Armor Temper, Akat Long Bow, Akat Longbow Shaft, Greater Dye of Strength \u003cStr+3 Con-3>, Greater Dye of Strength \u003cStr+3 Dex-3>' },
+  '25441-evil-spirit-cyrion': { hp:51869, patk:455, pdef:1905, mdef:773, exp:'1.1M', drop:'Earring of Binding, Ring of Ages, Necklace of Mermaid, Earring of Binding Gemstone, Ring of Ages Gemstone, Necklace of Mermaid Teardrop' },
+  '25498-fafurion-s-henchman-istary': { hp:51869, patk:455, pdef:1905, mdef:773, exp:'1.1M', drop:'Earring of Binding, Ring of Ages, Necklace of Mermaid, Earring of Binding Gemstone, Ring of Ages Gemstone, Necklace of Mermaid Teardrop' },
+  '25173-tiger-king-karuta': { hp:60514, patk:801, pdef:1905, mdef:773, exp:'1.6M', drop:'Composite Boots, Mithril Gauntlets, Composite Boots Part, Mithril Gauntlets Design, Greater Dye of Mental Strength \u003cMen+3 Wit-3>, Greater Dye of Wit \u003cWit+3 Int-3>' },
+  '25437-timak-orc-gosmos': { hp:103738, patk:911, pdef:1905, mdef:773, exp:'1.1M', drop:'Composite Armor, Composite Armor Temper, Fist Blade, Fist Blade Piece, Greater Dye of Intelligence \u003cInt+3 Men-3>, Greater Dye of Intelligence \u003cInt+3 Wit-3>' },
+  '25158-king-tarlk': { hp:248599, patk:2573, pdef:2094, mdef:848, exp:'2.4M', drop:'Theca Leather Armor, Theca Leather Gaiters, Drake Leather Armor, Theca Leather Mail Pattern, Theca Leather Gaiters Pattern, Drake Leather Mail Texture' },
+  '25456-mirror-of-oblivion': { hp:59249, patk:650, pdef:2159, mdef:876, exp:'1.2M', drop:'Full Plate Helmet, Full Plate Shield, Full Plate Helmet Design, Full Plate Shield Fragment, Greater Dye of Strength \u003cStr+3 Con-3>, Greater Dye of Strength \u003cStr+3 Dex-3>' },
+  '25420-orfen-s-handmaiden': { hp:66930, patk:1058, pdef:2094, mdef:848, exp:'1.6M', drop:'Divine Tunic, Divine Stockings, Divine Tunic Fabric, Divine Stocking Pattern, Great Pata, Great Pata Blade' },
+  '25131-carnage-lord-gato': { hp:71339, patk:1242, pdef:2225, mdef:904, exp:'1.7M', drop:'Tunic of Zubei, Stockings of Zubei, Avadon Robe, Tunic of Zubei Fabric, Stockings of Zubei Fabric, Avadon Robe Fabric' },
+  '25119-messenger-of-fairy-queen-berun': { hp:163059, patk:1918, pdef:2225, mdef:904, exp:'1.2M', drop:'Zubei''s Breastplate, Zubei''s Gaiters, Avadon Breastplate, Avadon Gaiters, Zubei''s Breastplate Part, Zubei''s Gaiter Material' },
+  '25067-captain-of-red-flag-shaka': { hp:140823, patk:1949, pdef:2363, mdef:957, exp:'2.9M', drop:'Tunic of Zubei, Stockings of Zubei, Avadon Robe, Tunic of Zubei Fabric, Stockings of Zubei Fabric, Avadon Robe Fabric' },
+  '25460-deadman-ereve': { hp:63062, patk:847, pdef:2293, mdef:929, exp:'1.4M', drop:'Zubei''s Breastplate, Zubei''s Gaiters, Avadon Breastplate, Avadon Gaiters, Zubei''s Breastplate Part, Zubei''s Gaiter Material' },
+  '25496-fafurion-s-envoy-pingolpin': { hp:64995, patk:911, pdef:2363, mdef:957, exp:'1.4M', drop:'Zubei''s Boots, Avadon Boots, Zubei''s Gauntlets, Avadon Gloves, Zubei''s Boots Design, Avadon Boots Design' },
+  '25029-atraiban': { hp:156190, patk:2342, pdef:2432, mdef:986, exp:'3.1M', drop:'Zubei''s Helmet, Zubei''s Shield, Avadon Shield, Avadon Circlet, Zubei''s Helmet Design, Zubei''s Shield Fragment' },
+  '25481-magus-kenishee': { hp:66938, patk:993, pdef:2432, mdef:986, exp:'1.4M', drop:'Zubei''s Leather Shirt, Zubei''s Leather Gaiters, Avadon Leather Armor, Zubei''s Leather Shirt Fabric, Zubei''s Leather Gaiter Texture, Avadon Leather Mail Lining' },
+  '25159-paniel-the-unicorn': { hp:80375, patk:1897, pdef:2503, mdef:1015, exp:'2M', drop:'Zubei''s Breastplate, Zubei''s Gaiters, Avadon Breastplate, Avadon Gaiters, Zubei''s Breastplate Part, Zubei''s Gaiter Material' },
+  '25137-beleth-s-seer-sephia': { hp:82665, patk:2033, pdef:2576, mdef:1045, exp:'2M', drop:'Zubei''s Helmet, Zubei''s Shield, Avadon Shield, Avadon Circlet, Zubei''s Helmet Design, Zubei''s Shield Fragment' },
+  '25070-enchanted-forest-watcher-ruell': { hp:82665, patk:1361, pdef:2576, mdef:1045, exp:'1.7M', drop:'Adamantite Earring, Adamantite Ring, Adamantite Necklace, Adamantite Earring Gemstone, Adamantite Ring Wire, Adamantite Necklace Chain' },
+  '25010-furious-thieles': { hp:153521, patk:2470, pdef:2576, mdef:1045, exp:'3M', drop:'Tunic of Zubei, Stockings of Zubei, Avadon Robe, Tunic of Zubei Fabric, Stockings of Zubei Fabric, Avadon Robe Fabric' },
+  '25434-bandit-leader-barda': { hp:70856, patk:1154, pdef:2576, mdef:1045, exp:'1.4M', drop:'Zubei''s Boots, Avadon Boots, Zubei''s Gauntlets, Avadon Gloves, Zubei''s Boots Design, Avadon Boots Design' },
+  '25493-eva-s-spirit-niniel': { hp:70856, patk:1154, pdef:2576, mdef:1045, exp:'1.4M', drop:'Zubei''s Helmet, Zubei''s Shield, Avadon Shield, Avadon Circlet, Zubei''s Helmet Design, Zubei''s Shield Fragment' },
+  '25241-harit-hero-tamash': { hp:153521, patk:2470, pdef:2576, mdef:1045, exp:'3M', drop:'Zubei''s Breastplate, Zubei''s Gaiters, Avadon Breastplate, Avadon Gaiters, Zubei''s Breastplate Part, Zubei''s Gaiter Material' },
+  '25273-carnamakos': { hp:169937, patk:2899, pdef:2649, mdef:1075, exp:'3.2M' },
+  '25122-refugee-applicant-leo': { hp:84968, patk:1458, pdef:2649, mdef:1075, exp:'1.7M', drop:'Blue Wolf Leather Armor, Leather Armor of Doom, Blue Wolf Leather Armor Texture, Leather Mail of Doom Design, Bellion Cestus, Bellion Cestus Edge' },
+  '25463-harit-guardian-garangky': { hp:72830, patk:1236, pdef:2649, mdef:1075, exp:'1.4M', drop:'Blue Wolf Leather Armor, Leather Armor of Doom, Blue Wolf Leather Armor Texture, Leather Mail of Doom Design, Scroll: Enchant Weapon (Grade B), Scroll: Enchant Armor (Grade B)' },
+  '25230-timak-seer-ragoth': { hp:87272, patk:2323, pdef:2722, mdef:1105, exp:'2M', drop:'Blue Wolf Breastplate, Blue Wolf Gaiters, Doom Plate Armor, Blue Wolf Breastplate Part, Blue Wolf Gaiters Material, Doom Plate Armor Temper' },
+  '25089-soulless-wild-boar': { hp:91885, patk:2661, pdef:2874, mdef:1166, exp:'2.1M', drop:'Earring of Black Ore, Ring of Black Ore, Necklace of Black Ore, Earring of Black Ore Piece, Ring of Black Ore Gemstone, Necklace of Black Ore Beads' },
+  '25423-fairy-queen-timiniel': { hp:84968, patk:1458, pdef:2649, mdef:1075, exp:'1.7M', drop:'Blue Wolf Tunic, Tunic of Doom, Blue Wolf Stockings, Stockings of Doom, Blue Wolf Tunic Fabric, Tunic of Doom Pattern' },
+  '25407-lord-ishka': { hp:80732, patk:1640, pdef:2951, mdef:1197, exp:'1.5M', drop:'Blue Wolf Tunic, Tunic of Doom, Blue Wolf Stockings, Stockings of Doom, Blue Wolf Tunic Fabric, Tunic of Doom Pattern' },
+  '25032-eva-s-guardian-millenu': { hp:229722, patk:5878, pdef:3349, mdef:1357, exp:'1.8M', drop:'Sealed Dark Crystal Leather Armor, Sealed Dark Crystalline Leggings, Sealed Tallum Leather Armor, Sealed Dark Crystal Leather Armor Pattern, Sealed Dark Crystalline Leggings Design, Sealed Tallum Leather Armor Pattern' },
+  '25226-roaring-lord-kastor': { hp:193664, patk:4509, pdef:3107, mdef:1260, exp:'3.8M', drop:'Sealed Phoenix Necklace, Sealed Phoenix Earring, Sealed Phoenix Ring, Sealed Phoenix Necklace Beads, Sealed Phoenix Earring Gemstone, Sealed Phoenix Ring Gemstone' },
+  '25256-taik-high-prefect-arak': { hp:94188, patk:2892, pdef:2951, mdef:1197, exp:'2.1M', drop:'Blue Wolf Breastplate, Blue Wolf Gaiters, Doom Plate Armor, Blue Wolf Breastplate Part, Blue Wolf Gaiters Material, Doom Plate Armor Temper' },
+  '25162-giant-marpanak': { hp:349842, patk:7024, pdef:2951, mdef:1197, exp:'3.1M', drop:'Doom Shield, Blue Wolf Helmet, Doom Helmet, Doom Shield Fragment, Blue Wolf Helmet Design, Doom Helmet Pattern' },
+  '25125-fierce-tiger-king-angel': { hp:459444, patk:11761, pdef:3349, mdef:1357, exp:'1.8M', drop:'Sealed Tallum Tunic, Sealed Tallum Stockings, Sealed Dark Crystal Robe, Sealed Tallum Tunic Texture, Sealed Tallum Stockings Fabric, Sealed Dark Crystal Robe Fabric' },
+  '25467-gorgolos': { hp:85133, patk:2100, pdef:3627, mdef:1324, exp:'1.7M', drop:'Sealed Dark Crystal Helmet, Sealed Dark Crystal Shield, Sealed Tallum Helmet, Sealed Dark Crystal Helmet Design, Sealed Dark Crystal Shield Fragment, Sealed Tallum Helm Design' },
+  '25051-rahha': { hp:186648, patk:4655, pdef:3349, mdef:1357, exp:'3.7M', drop:'Sealed Dark Crystal breastplate, Sealed Dark Crystal Gaiters, Sealed Tallum Plate Armor, Sealed Dark Crystal Breastplate Pattern, Sealed Dark Crystal Gaiters Pattern, Sealed Tallum Plate Armor Pattern' },
+  '25444-enmity-ghost-ramdal': { hp:86145, patk:2174, pdef:3349, mdef:1357, exp:'1.8M', drop:'Sealed Dark Crystal breastplate, Sealed Dark Crystal Gaiters, Sealed Tallum Plate Armor, Sealed Dark Crystal Breastplate Pattern, Sealed Dark Crystal Gaiters Pattern, Sealed Tallum Plate Armor Pattern' },
+  '25255-gargoyle-lord-tiphon': { hp:373296, patk:9310, pdef:3349, mdef:1357, exp:'3.7M', drop:'Sealed Dark Crystal Leather Armor, Sealed Dark Crystalline Leggings, Sealed Tallum Leather Armor, Sealed Dark Crystal Leather Armor Pattern, Sealed Dark Crystalline Leggings Design, Sealed Tallum Leather Armor Pattern' },
+  '25140-hekaton-prime': { hp:186648, patk:4655, pdef:3349, mdef:1357, exp:'3.7M', drop:'Sealed Phoenix Necklace, Sealed Phoenix Earring, Sealed Phoenix Ring, Sealed Phoenix Necklace Beads, Sealed Phoenix Earring Gemstone, Sealed Phoenix Ring Gemstone' },
+  '25478-shilen-s-priest-hisilrome': { hp:86145, patk:2174, pdef:3349, mdef:1357, exp:'1.8M', drop:'Sealed Tallum Tunic, Sealed Tallum Stockings, Sealed Dark Crystal Robe, Sealed Tallum Tunic Texture, Sealed Tallum Stockings Fabric, Sealed Dark Crystal Robe Fabric' },
+  '25322-demon-s-agent-falston': { hp:232323, patk:6090, pdef:3430, mdef:1393, exp:'1.8M', drop:'Sealed Phoenix Necklace, Sealed Phoenix Earring, Sealed Phoenix Ring, Sealed Phoenix Necklace Beads, Sealed Phoenix Earring Gemstone, Sealed Phoenix Ring Gemstone' },
+  '25073-bloody-priest-rudelto': { hp:239476, patk:6749, pdef:3679, mdef:1494, exp:'1.9M', drop:'Sealed Robe of Nightmare, Sealed Majestic Robe, Sealed Robe of Nightmare Fabric, Sealed Majestic Robe Fabric, Soul Bow, Soul Bow Stave' },
+  '25092-korim': { hp:196324, patk:5656, pdef:3763, mdef:1528, exp:'3.9M', drop:'Sealed Helm of Nightmare, Sealed Shield of Nightmare, Sealed Majestic Circlet, Sealed Helm of Nightmare Design, Sealed Shield of Nightmare Fragment, Sealed Majestic Circlet Design' },
+  '25233-spirit-of-andras-the-betrayer': { hp:209541, patk:8953, pdef:3679, mdef:1494, exp:'2.6M', drop:'Sealed Majestic Necklace, Sealed Majestic Earring, Sealed Majestic Ring, Sealed Majestic Necklace Beads, Sealed Majestic Earring Gemstone, Sealed Majestic Ring Gemstone' },
+  '25198-fafurion-s-herald-lokness': { hp:483261, patk:13963, pdef:3763, mdef:1528, exp:'1.9M', drop:'Sealed Armor of Nightmare, Sealed Majestic Plate Armor, Elysian Axe, Branch of The Mother Tree, Sealed Armor of Nightmare Pattern, Sealed Majestic Plate Armor Pattern' },
+  '25453-meanas-anor': { hp:196324, patk:5656, pdef:3763, mdef:1528, exp:'3.9M', drop:'Sealed Leather Armor of Nightmare, Sealed Majestic Leather Armor, Sealed Leather Armor of Nightmare Fabric, Sealed Majestic Leather Armor Fabric, Tallum Glaive, Tallum Glaive Edge' },
+  '25252-palibati-queen-themis': { hp:211425, patk:6220, pdef:3763, mdef:1528, exp:'4.1M', drop:'Sealed Robe of Nightmare, Sealed Majestic Robe, Sealed Robe of Nightmare Fabric, Sealed Majestic Robe Fabric, Dragon Grinder, Dragon Grinder Edge' },
+  '25248-doom-blade-tanatos': { hp:399054, patk:13024, pdef:3931, mdef:1594, exp:'4.4M', drop:'Sealed Helm of Nightmare, Sealed Shield of Nightmare, Sealed Majestic Circlet, Sealed Helm of Nightmare Design, Sealed Shield of Nightmare Fragment, Sealed Majestic Circlet Design' },
+  '25109-antharas-priest-cloe': { hp:248996, patk:8713, pdef:4102, mdef:1664, exp:'2.2M', drop:'Sealed Armor of Nightmare, Sealed Majestic Plate Armor, Sealed Armor of Nightmare Pattern, Sealed Majestic Plate Armor Pattern, Tallum Glaive, Tallum Glaive Edge' },
+  '25220-death-lord-hallate': { hp:247349, patk:8447, pdef:4017, mdef:1629, exp:'2.2M', drop:'Sealed Leather Armor of Nightmare, Sealed Majestic Leather Armor, Sealed Leather Armor of Nightmare Fabric, Sealed Majestic Leather Armor Fabric, Scroll: Enchant Weapon (Grade S), Scroll: Enchant Armor (Grade S)' },
+  '25235-vanor-chief-kandra': { hp:245570, patk:8184, pdef:3931, mdef:1594, exp:'2.2M', drop:'Sealed Gloves of Nightmare, Sealed Boots of Nightmare, Sealed Majestic Gloves, Sealed Majestic Boots, Sealed Gloves of Nightmare Design, Sealed Boots of Nightmare Lining' },
+  '25202-krokian-padisha-sobekk': { hp:248996, patk:8713, pdef:4102, mdef:1664, exp:'2.2M', drop:'Sealed Robe of Nightmare, Sealed Majestic Robe, Dragon Slayer, Sword of Miracles , Dark Legion''s Edge, Sealed Robe of Nightmare Fabric' },
+  '29006-core': { hp:162561, patk:533, pdef:2226, mdef:904, exp:'2M', drop:'Caliburs, Homunkulus''s Sword, War Axe, Nirvana Axe, Sage''s Staff, Dark Screamer' },
+  '29014-orfen': { hp:325124, patk:553, pdef:2226, mdef:904, exp:'2M', drop:'Sword of Delusion, Sword of Whispering Death, War Axe, Club of Nature, Paagrio Hammer, Grace Dagger' },
+  '29001-queen-ant': { hp:229898, patk:329, pdef:1615, mdef:655, exp:'2.2M', drop:'Elven Long Sword, Claymore, Bonebreaker, Staff of Life, Ghost Staff, Mithril Dagger' },
+  '29022-zaken': { hp:858518, patk:7273, pdef:2951, mdef:1197, exp:'4.9M', drop:'Samurai Longsword, Deadman''s Staff, Ghoul''s Staff, Demon''s Staff, Crystal Dagger, Great Pata' },
+  'demon-kurikups': { hp:100502, patk:3835, pdef:3349, mdef:1357, exp:'2.5M', drop:'Sealed Dark Crystal Gloves, Sealed Dark Crystal Boots, Sealed Tallum Gloves, Sealed Tallum Boots, Sealed Dark Crystal Gloves Design, Sealed Dark Crystal Boots Lining' },
+  '25484-zakens-chief-mate-tillion': { hp:61148, patk:705, pdef:2225, mdef:904, exp:'1.2M', drop:'Zubei''s Helmet, Zubei''s Shield, Avadon Shield, Avadon Circlet, Zubei''s Helmet Design, Zubei''s Shield Fragment' },
+  '25259-zakens-butcher-krantz': { hp:307043, patk:4940, pdef:2576, mdef:1045, exp:'3M', drop:'Tunic of Zubei, Stockings of Zubei, Avadon Robe, Tunic of Zubei Fabric, Stockings of Zubei Fabric, Avadon Robe Fabric' },
 };
 function fmtStat(n){
   const v = Number(n);
@@ -534,10 +660,23 @@ function bossInfoHTML(b){
     + `<div class="binfo-row"><span>Опыт</span><b>${esc(info.exp || '—')}</b></div>`
     + `</div>`;
 }
+function isFav(id){ return (settings.fav || []).indexOf(id) >= 0; }
+function toggleFav(id){
+  settings.fav = settings.fav || [];
+  const i = settings.fav.indexOf(id);
+  if (i >= 0) settings.fav.splice(i, 1); else settings.fav.push(id);
+  saveSet(); renderAll();
+}
+function favBtn(b){
+  const on = isFav(b.i);
+  return `<button class="fav${on?' on':''}" title="${on?'Убрать из избранного':'В избранное'}" onclick="event.stopPropagation();toggleFav('${b.i}')">${on?'★':'☆'}</button>`;
+}
 
 let state = loadJSON(LS_STATE, {});
 let settings = Object.assign({ sound:true, preWarn:0, actor:'', logOn:true }, loadJSON(LS_SET, {}));
 settings.ui = Object.assign({ q:'', lo:'', hi:'', charLv:'', spread:7, status:'all', sort:'level' }, settings.ui || {});
+settings.fav = settings.fav || [];
+settings.favOnly = settings.favOnly || false;
 let modalCtx = null;
 let currentDetailId = null;
 
@@ -1419,14 +1558,25 @@ function baseFiltered(){
   const clv = parseInt($('charLv').value,10);
   const sp = Math.max(0, parseInt($('spread').value,10) || 0);
   const st = $('status').value;
+  const favOnly = $('favOnly') && $('favOnly').checked;
   return BOSSES.filter(b=>{
     if (q && !(b.n.toLowerCase().includes(q) || (b.l||'').toLowerCase().includes(q))) return false;
     if (!isNaN(lo) && b.lv < lo) return false;
     if (!isNaN(hi) && b.lv > hi) return false;
     if (!isNaN(clv) && Math.abs(b.lv - clv) > sp) return false;
     if (st !== 'all' && statusOf(state[b.i]) !== st) return false;
+    if (favOnly && !(settings.fav || []).includes(b.i)) return false;
     return true;
   });
+}
+function bossPassesLevel(b){
+  const lo = parseInt($('lo').value,10), hi = parseInt($('hi').value,10);
+  const clv = parseInt($('charLv').value,10);
+  const sp = Math.max(0, parseInt($('spread').value,10) || 0);
+  if (!isNaN(lo) && b.lv < lo) return false;
+  if (!isNaN(hi) && b.lv > hi) return false;
+  if (!isNaN(clv) && Math.abs(b.lv - clv) > sp) return false;
+  return true;
 }
 function listFiltered(){
   const arr = baseFiltered();
@@ -1477,7 +1627,7 @@ function cardHTML(b){
   }
   const staleHint = stale ? `<div class="stale-hint">Босса нет? Вероятно, уже убили — жми «🔪 Уже убит (≈)».</div>` : '';
   return `<div class="card ${meta.cls}" data-id="${b.i}">
-    <div class="row1"><span class="name">${esc(b.n)}</span><span class="badge ${meta.badge}">${meta.txt}</span></div>
+    <div class="row1">${favBtn(b)}<span class="name">${esc(b.n)}</span><span class="badge ${meta.badge}">${meta.txt}</span></div>
     <div class="loc">${esc(b.l||'')} · ур. ${b.lv}</div>
     <div class="resp">респ: ${respLabel(b)}</div>
     ${ respawnEstimateHTML(b) }
@@ -1604,7 +1754,7 @@ function detailHTML(b){
       : `<div class="chk">ещё не проверял</div>`;
   }
   const staleHint = stale ? `<div class="stale-hint">Босса нет? Вероятно, уже убили — жми «🔪 Уже убит (≈)».</div>` : '';
-  return `<div class="row1"><span class="name">${esc(b.n)}</span><span class="badge ${meta.badge}">${meta.txt}</span></div>
+  return `<div class="row1">${favBtn(b)}<span class="name">${esc(b.n)}</span><span class="badge ${meta.badge}">${meta.txt}</span></div>
     <div class="loc">${esc(b.l||'')} · ур. ${b.lv}</div>
     <div class="resp">респ: ${respLabel(b)}</div>
     ${ bossInfoHTML(b) }
@@ -1700,6 +1850,7 @@ function saveState(){
 function applySettingsToUI(){
   $('prewarn').value = settings.preWarn || 0;
   $('sound').textContent = settings.sound ? '🔊 Звук: вкл' : '🔇 Звук: выкл';
+  $('favOnly').checked = !!settings.favOnly;
   applyUIControls();
 }
 function onFilePicked(e){
@@ -1776,6 +1927,7 @@ function tick(){
   const now = Date.now();
   for (const id in state){
     const s = state[id], b = bossById(id); if (!b) continue;
+    if (!bossPassesLevel(b)) continue;
     if (b.f){
       if (now >= s.r0 && !s.n1){ s.n1 = true; save(); notify(`Респ: ${b.n}`, `Ожидается в ${fmtClock(s.r0)} · ${b.l||''}`); }
     } else {
@@ -1849,6 +2001,7 @@ function esc(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
   $(id).addEventListener('input', ()=>{ renderAll(); persistUISoon(); });
   $(id).addEventListener('change', ()=>{ renderAll(); persistUISoon(); });
 });
+$('favOnly').addEventListener('change', ()=>{ settings.favOnly = $('favOnly').checked; saveSet(); renderAll(); });
 $('fitBtn').addEventListener('click', fitMap);
 $('prewarn').addEventListener('change', e=>{ settings.preWarn = Math.max(0, parseInt(e.target.value,10)||0); saveSet(); });
 $('prewarn').addEventListener('input', e=>{ settings.preWarn = Math.max(0, parseInt(e.target.value,10)||0); saveSet(); });
