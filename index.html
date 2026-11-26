@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#171b22">
+<link rel="icon" href="data:,">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1048,6 +1049,8 @@ const PRESENCE_BEAT = 45000;
 
 let presence = [];
 let presenceMissing = false;
+let presenceMissingAt = 0;
+const PRESENCE_RETRY = 5 * 60 * 1000;   /* таблицы нет — перепроверяем раз в 5 минут */
 let presenceBeatTimer = null;
 
 function clientId(){
@@ -1061,17 +1064,19 @@ function clientId(){
 }
 async function beatPresence(){
   if (!syncEnabled()) return;
+  if (presenceMissing && Date.now() - presenceMissingAt < PRESENCE_RETRY) return;
   try {
     await syncReq('?on_conflict=id', 'POST',
       [{ id: clientId(), name: actorName(), seen_at: Date.now() }],
       'resolution=merge-duplicates,return=minimal', SYNC.presenceTable);
     if (presenceMissing){ presenceMissing = false; renderPresence(); }
   } catch(e){
-    if (/нет таблицы/.test(e.message || '')){ presenceMissing = true; renderPresence(); }
+    if (/нет таблицы/.test(e.message || '')){ presenceMissing = true; presenceMissingAt = Date.now(); renderPresence(); }
   }
 }
 async function fetchPresence(){
   if (!syncEnabled()) return;
+  if (presenceMissing && Date.now() - presenceMissingAt < PRESENCE_RETRY) return;
   try {
     const since = Date.now() - PRESENCE_TTL;
     const res = await syncReq('?select=id,name,seen_at&seen_at=gte.' + since + '&order=seen_at.desc',
@@ -1082,7 +1087,7 @@ async function fetchPresence(){
     if (presenceMissing){ presenceMissing = false; }
     renderPresence();
   } catch(e){
-    if (/нет таблицы/.test(e.message || '')){ presenceMissing = true; renderPresence(); }
+    if (/нет таблицы/.test(e.message || '')){ presenceMissing = true; presenceMissingAt = Date.now(); renderPresence(); }
   }
 }
 function agoLabel(ms){
