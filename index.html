@@ -205,12 +205,14 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
 .card.st-pending{border-color:var(--accent)}
 .card.st-stale{border-color:#b06bf0;background:linear-gradient(180deg,rgba(176,107,240,.10),rgba(176,107,240,0) 70%),var(--bg3)}
 .card .row1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.card-thumb{width:72px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--bg3);margin-left:auto;align-self:center;flex:0 0 auto}
 .name{font-weight:600;font-size:14px}
 .fav{background:transparent;border:none;padding:0 4px;font-size:15px;cursor:pointer;color:var(--dim2);line-height:1;flex:0 0 auto}
 .fav:hover{color:var(--amber)}
 .fav.on{color:var(--amber)}
 .loc{color:var(--dim);font-size:12px}
 .resp{color:var(--dim2);font-size:11.5px}
+.boss-img{display:block;max-width:100%;max-height:230px;width:auto;height:auto;margin:8px auto 2px;border-radius:10px;border:1px solid var(--line);background:var(--bg3)}
 .binfo{margin-top:8px;border:1px solid var(--line);border-radius:9px;background:var(--bg3);padding:8px 10px;display:grid;grid-template-columns:1fr 1fr;gap:6px 14px}
 .binfo-row{display:flex;justify-content:space-between;gap:8px;font-size:12px;min-width:0}
 .binfo-row>span{color:var(--dim2)}
@@ -640,6 +642,174 @@ const BOSS_INFO = {
   '25484-zakens-chief-mate-tillion': { hp:61148, patk:705, pdef:2225, mdef:904, exp:'1.2M', drop:'Zubei\'s Helmet, Zubei\'s Shield, Avadon Shield, Avadon Circlet, Zubei\'s Helmet Design, Zubei\'s Shield Fragment' },
   '25259-zakens-butcher-krantz': { hp:307043, patk:4940, pdef:2576, mdef:1045, exp:'3M', drop:'Tunic of Zubei, Stockings of Zubei, Avadon Robe, Tunic of Zubei Fabric, Stockings of Zubei Fabric, Avadon Robe Fabric' },
 };
+
+/* ---- картинки боссов (linedia.ru + l2j.ru) ----
+   Ключ — b.i. Если картинки нет, босс показывается без изображения. */
+const BOSS_IMG = {
+  '25372-discarded-guardian': 'https://linedia.ru/w/images/6/6a/Discarded_Guardian%2C_Screenshot.jpg',
+  '25378-madness-beast': 'https://linedia.ru/w/images/1/12/Madness_Beast%2C_Screenshot.jpg',
+  '25380-kaysha-herald-of-icarus': 'https://linedia.ru/w/images/8/8c/Kaysha_Herald_of_Icarus%2C_Screenshot.jpg',
+  '25146-serpent-demon-bifrons': 'https://linedia.ru/w/images/b/b7/Serpent_Demon_Bifrons%2C_Screenshot.jpg',
+  '25357-sukar-wererat-chief': 'https://linedia.ru/w/images/6/64/Sukar_Wererat_Chief%2C_Screenshot.jpg',
+  '25060-unrequited-kael': 'https://linedia.ru/w/images/0/04/Unrequited_Kael%2C_Screenshot.jpg',
+  '25426-betrayer-of-urutu-freki': 'https://linedia.ru/w/images/1/18/Betrayer_of_Urutu_Freki%2C_Screenshot.jpg',
+  '25166-ikuntai': 'https://linedia.ru/w/images/1/16/Ikuntai%2C_Screenshot.jpg',
+  '25429-mammon-collector-talos': 'https://linedia.ru/w/images/2/2e/Mammon_Collector_Talos%2C_Screenshot.jpg',
+  '25019-pan-dryad': 'https://linedia.ru/w/images/a/ae/Pan_Dryad%2C_Screenshot.jpg',
+  '25076-princess-molrang': 'https://linedia.ru/w/images/a/a2/Princess_Molrang%2C_Screenshot.jpg',
+  '25369-soul-scavenger': 'https://linedia.ru/w/images/3/3a/Soul_Scavenger%2C_Screenshot.jpg',
+  '25149-zombie-lord-crowl': 'https://linedia.ru/w/images/b/bf/Zombie_Lord_Crowl%2C_Screenshot.jpg',
+  '25365-patriarch-kuroboros': 'https://linedia.ru/w/images/f/f4/Patriarch_Kuroboros%2C_Screenshot.jpg',
+  '25360-tiger-hornet': 'https://linedia.ru/w/images/a/a1/Tiger_Hornet%2C_Screenshot.jpg',
+  '25272-partisan-leader-talakin': 'https://linedia.ru/w/images/9/9d/Partisan_Leader_Talakin%2C_Screenshot.jpg',
+  '25038-tirak': 'https://linedia.ru/w/images/f/fc/Tirak%2C_Screenshot.jpg',
+  '25095-elf-renoa': 'https://linedia.ru/w/images/b/bd/Elf_Renoa%2C_Screenshot.jpg',
+  '25188-apepi': 'https://linedia.ru/w/images/4/4b/Apepi%2C_Screenshot.jpg',
+  '25501-boss-akata': 'https://linedia.ru/w/images/d/d7/Boss_Akata%2C_Screenshot.jpg',
+  '25352-giant-wasteland-basilisk': 'https://linedia.ru/w/images/2/21/Giant_Wasteland_Basilisk%2C_Screenshot.jpg',
+  '25169-ragraman': 'https://linedia.ru/w/images/7/7f/Ragraman%2C_Screenshot.jpg',
+  '25392-captain-of-queen-s-royal-guards': 'https://linedia.ru/w/images/e/eb/Captain_of_Queen%27s_Royal_Guards%2C_Screenshot.jpg',
+  '25152-flame-lord-shadar': 'https://linedia.ru/w/images/9/9c/Flame_Lord_Shadar%2C_Screenshot.jpg',
+  '25354-gargoyle-lord-sirocco': 'https://linedia.ru/w/images/3/32/Gargoyle_Lord_Sirocco%2C_Screenshot.jpg',
+  '25388-red-eye-captain-trakia': 'https://linedia.ru/w/images/5/57/Red_Eye_Captain_Trakia%2C_Screenshot.jpg',
+  '25041-remmel': 'https://linedia.ru/w/images/6/6f/Remmel%2C_Screenshot.jpg',
+  '25098-sejarr-s-servitor': 'https://linedia.ru/w/images/4/4c/Sejarr%27s_Servitor%2C_Screenshot.jpg',
+  '25385-evil-spirit-tempest': 'https://linedia.ru/w/images/4/4c/Evil_Spirit_Tempest%2C_Screenshot.jpg',
+  '25415-nakondas': 'https://linedia.ru/w/images/c/cf/Nakondas%2C_Screenshot.jpg',
+  '25170-lizardmen-leader-hellion': 'https://linedia.ru/w/images/2/2e/Lizardmen_Leader_Hellion%2C_Screenshot.jpg',
+  '25394-premo-prime': 'https://linedia.ru/w/images/d/df/Premo_Prime%2C_Screenshot.jpg',
+  '25506-rayito-the-looter': 'https://linedia.ru/w/images/3/3a/Rayito_the_Looter%2C_Screenshot.jpg',
+  '25082-leader-of-cat-gang': 'https://linedia.ru/w/images/4/4c/Leader_of_Cat_Gang%2C_Screenshot.jpg',
+  '25504-nellis-vengeful-spirit': 'https://linedia.ru/w/images/5/55/Nellis%27_Vengeful_Spirit%2C_Screenshot.jpg',
+  '25487-water-spirit-lian': 'https://linedia.ru/w/images/0/0d/Water_Spirit_Lian%2C_Screenshot.jpg',
+  '25115-icarus-sample-1': 'https://linedia.ru/w/images/a/a1/Icarus_Sample_1%2C_Screenshot.jpg',
+  '25410-road-scavenger-leader': 'https://linedia.ru/w/images/b/bc/Road_Scavenger_Leader%2C_Screenshot.jpg',
+  '25155-shaman-king-selu': 'https://linedia.ru/w/images/0/05/Shaman_King_Selu%2C_Screenshot.jpg',
+  '25088-crazy-mechanic-golem': 'https://linedia.ru/w/images/1/1b/Crazy_Mechanic_Golem%2C_Screenshot.jpg',
+  '25007-retreat-spider-cletu': 'https://linedia.ru/w/images/d/d9/Retreat_Spider_Cletu%2C_Screenshot.jpg',
+  '25431-flamestone-golem': 'https://linedia.ru/w/images/5/54/Flamestone_Golem%2C_Screenshot.jpg',
+  '25085-timak-orc-chief-ranger': 'https://linedia.ru/w/images/4/4c/Timak_Orc_Chief_Ranger%2C_Screenshot.jpg',
+  '25260-iron-giant-totem': 'https://linedia.ru/w/images/3/3c/Iron_Giant_Totem%2C_Screenshot.jpg',
+  '25102-shacram': 'https://linedia.ru/w/images/8/8c/Shacram%2C_Screenshot.jpg',
+  '25438-thief-kelbar': 'https://linedia.ru/w/images/2/2d/Thief_Kelbar%2C_Screenshot.jpg',
+  '25395-archon-suscepter': 'https://linedia.ru/w/images/a/ae/Archon_Susceptor%2C_Screenshot.jpg',
+  '25441-evil-spirit-cyrion': 'https://linedia.ru/w/images/4/4e/Evil_Spirit_Cyrion%2C_Screenshot.jpg',
+  '25437-timak-orc-gosmos': 'https://linedia.ru/w/images/1/13/Timak_Orc_Gosmos%2C_Screenshot.jpg',
+  '25456-mirror-of-oblivion': 'https://linedia.ru/w/images/a/a2/Mirror_of_Oblivion%2C_Screenshot.jpg',
+  '25131-carnage-lord-gato': 'https://linedia.ru/w/images/c/c6/Carnage_Lord_Gato%2C_Screenshot.jpg',
+  '25067-captain-of-red-flag-shaka': 'https://linedia.ru/w/images/5/5f/Captain_of_Red_Flag_Shaka%2C_Screenshot.jpg',
+  '25460-deadman-ereve': 'https://linedia.ru/w/images/e/ed/Deadman_Ereve%2C_Screenshot.jpg',
+  '25029-atraiban': 'https://linedia.ru/w/images/d/df/Atraiban%2C_Screenshot.jpg',
+  '25481-magus-kenishee': 'https://linedia.ru/w/images/0/0a/Magus_Kenishee%2C_Screenshot.jpg',
+  '25159-paniel-the-unicorn': 'https://linedia.ru/w/images/3/3e/Paniel_the_Unicorn%2C_Screenshot.jpg',
+  '25103-sorcerer-isirr': 'https://linedia.ru/w/images/b/b4/Sorcerer_Isirr%2C_Screenshot.jpg',
+  '25434-bandit-leader-barda': 'https://linedia.ru/w/images/d/de/Bandit_Leader_Barda%2C_Screenshot.jpg',
+  '25493-eva-s-spirit-niniel': 'https://linedia.ru/w/images/e/e5/Eva%27s_Spirit_Niniel%2C_Screenshot.jpg',
+  '25241-harit-hero-tamash': 'https://linedia.ru/w/images/2/20/Harit_Hero_Tamash%2C_Screenshot.jpg',
+  '25122-refugee-applicant-leo': 'https://linedia.ru/w/images/6/64/Refugee_Applicant_Leo%2C_Screenshot.jpg',
+  '25463-harit-guardian-garangky': 'https://linedia.ru/w/images/9/95/Harit_Guardian_Garangky%2C_Screenshot.jpg',
+  '25230-timak-seer-ragoth': 'https://linedia.ru/w/images/e/e5/Timak_Seer_Ragoth%2C_Screenshot.jpg',
+  '25089-soulless-wild-boar': 'https://linedia.ru/w/images/2/25/Soulless_Wild_Boar%2C_Screenshot.jpg',
+  '25423-fairy-queen-timiniel': 'https://linedia.ru/w/images/0/07/Fairy_Queen_Timiniel%2C_Screenshot.jpg',
+  '25226-roaring-lord-kastor': 'https://linedia.ru/w/images/3/36/Roaring_Lord_Kastor%2C_Screenshot.jpg',
+  '25256-taik-high-prefect-arak': 'https://linedia.ru/w/images/6/6c/Taik_High_Prefect_Arak%2C_Screenshot.jpg',
+  '25238-abyss-brukunt': 'https://linedia.ru/w/images/3/3a/Abyss_Brukunt%2C_Screenshot.jpg',
+  '25182-demon-kuri': 'https://linedia.ru/w/images/8/82/Demon_Kuri%2C_Screenshot.jpg',
+  '25125-fierce-tiger-king-angel': 'https://linedia.ru/w/images/c/c4/Fierce_Tiger_King_Angel%2C_Screenshot.jpg',
+  '25106-ghost-of-the-well-lidia': 'https://linedia.ru/w/images/4/40/Ghost_of_the_Well_Lidia%2C_Screenshot.jpg',
+  '25467-gorgolos': 'https://linedia.ru/w/images/4/47/Gorgolos%2C_Screenshot.jpg',
+  '25051-rahha': 'https://linedia.ru/w/images/1/1e/Rahha%2C_Screenshot.jpg',
+  '25444-enmity-ghost-ramdal': 'https://linedia.ru/w/images/c/c9/Enmity_Ghost_Ramdal%2C_Screenshot.jpg',
+  '25140-hekaton-prime': 'https://linedia.ru/w/images/1/1f/Hekaton_Prime%2C_Screenshot.jpg',
+  '25478-shilen-s-priest-hisilrome': 'https://linedia.ru/w/images/0/0b/Shilen%27s_Priest_Hisilrome%2C_Screenshot.jpg',
+  '25263-kernon-s-faithful-servant-kelone': 'https://linedia.ru/w/images/6/6f/Kernon%27s_Faithful_Servant_Kelone%2C_Screenshot.jpg',
+  '25073-bloody-priest-rudelto': 'https://linedia.ru/w/images/6/60/Bloody_Priest_Rudelto%2C_Screenshot.jpg',
+  '25092-korim': 'https://linedia.ru/w/images/0/0e/Korim%2C_Screenshot.jpg',
+  '25035-shilen-s-messenger-cabrio': 'https://linedia.ru/w/images/d/d5/Shilen%27s_Messenger_Cabrio%2C_Screenshot.jpg',
+  '25198-fafurion-s-herald-lokness': 'https://linedia.ru/w/images/9/9a/Fafurion%27s_Herald_Lokness%2C_Screenshot.jpg',
+  '25453-meanas-anor': 'https://linedia.ru/w/images/6/65/Meanas_Anor%2C_Screenshot.jpg',
+  '25252-palibati-queen-themis': 'https://linedia.ru/w/images/3/37/Palibati_Queen_Themis%2C_Screenshot.jpg',
+  '25163-roaring-skylancer': 'https://linedia.ru/w/images/5/52/Roaring_Skylancer%2C_Screenshot.jpg',
+  '25281-anakim-s-nemesis-zakaron': 'https://linedia.ru/w/images/0/02/Anakim%27s_Nemesis_Zakaron%2C_Screenshot.jpg',
+  '25269-beast-lord-behemoth': 'https://linedia.ru/w/images/2/28/Beast_Lord_Behemoth%2C_Screenshot.jpg',
+  '25248-doom-blade-tanatos': 'https://linedia.ru/w/images/8/8e/Doom_Blade_Tanatos%2C_Screenshot.jpg',
+  '25447-immortal-savior-mardil': 'https://linedia.ru/w/images/4/41/Immortal_Savior_Mardil%2C_Screenshot.jpg',
+  '25109-antharas-priest-cloe': 'https://linedia.ru/w/images/c/ca/Antharas_Priest_Cloe%2C_Screenshot.jpg',
+  '25220-death-lord-hallate': 'https://linedia.ru/w/images/0/09/Death_Lord_Hallate%2C_Screenshot.jpg',
+  '25235-vanor-chief-kandra': 'https://linedia.ru/w/images/9/93/Vanor_Chief_Kandra%2C_Screenshot.jpg',
+  '25199-water-dragon-seer-sheshark': 'https://linedia.ru/w/images/9/9f/Water_Dragon_Seer_Sheshark%2C_Screenshot.jpg',
+  '25524-flamestone-giant': 'https://linedia.ru/w/images/7/77/Flamestone_Giant%2C_Screenshot.jpg',
+  '25202-krokian-padisha-sobekk': 'https://linedia.ru/w/images/0/0a/Krokian_Padisha_Sobekk%2C_Screenshot.jpg',
+  '29006-core': 'https://linedia.ru/w/images/5/55/Core%2C_Screenshot.jpg',
+  '29014-orfen': 'https://linedia.ru/w/images/0/01/Orfen%2C_Screenshot.jpg',
+  '29001-queen-ant': 'https://linedia.ru/w/images/6/6c/Queen_Ant%2C_Screenshot.jpg',
+  '29022-zaken': 'https://linedia.ru/w/images/e/ea/Zaken%2C_Screenshot.jpg',
+  '25484-zakens-chief-mate-tillion': 'https://linedia.ru/w/images/2/28/Zaken%27s_Chief_Mate_Tillion%2C_Screenshot.jpg',
+  '25259-zakens-butcher-krantz': 'https://linedia.ru/w/images/6/6a/Zaken%27s_Butcher_Krantz%2C_Screenshot.jpg',
+  '25375-zombie-lord-ferkel': 'https://l2j.ru/npc_picture.php?id=25375',
+  '25373-malex-herald-of-dagoniel': 'https://l2j.ru/npc_picture.php?id=25373',
+  '25001-greyclaw-kutus': 'https://l2j.ru/npc_picture.php?id=25001',
+  '25366-kuroboros-priest': 'https://l2j.ru/npc_picture.php?id=25366',
+  '25362-tracker-leader-sharuk': 'https://l2j.ru/npc_picture.php?id=25362',
+  '25112-beleth-s-agent-meana': 'https://l2j.ru/npc_picture.php?id=25112',
+  '25079-cat-s-eye-bandit': 'https://l2j.ru/npc_picture.php?id=25079',
+  '25004-turek-mercenary-captain': 'https://l2j.ru/npc_picture.php?id=25004',
+  '25401-skyla': 'https://l2j.ru/npc_picture.php?id=25401',
+  '25404-corsair-captain-kylon': 'https://l2j.ru/npc_picture.php?id=25404',
+  '25391-nurka-s-messenger': 'https://l2j.ru/npc_picture.php?id=25391',
+  '25128-vuku-grand-seer-gharmash': 'https://l2j.ru/npc_picture.php?id=25128',
+  '25020-breka-warlock-pastu': 'https://l2j.ru/npc_picture.php?id=25020',
+  '25189-cronos-s-servitor-mumu': 'https://l2j.ru/npc_picture.php?id=25189',
+  '25383-revenant-of-sir-calibus': 'https://l2j.ru/npc_picture.php?id=25383',
+  '25023-stakato-queen-zyrnna': 'https://l2j.ru/npc_picture.php?id=25023',
+  '25398-beleth-s-eye': 'https://l2j.ru/npc_picture.php?id=25398',
+  '25063-chertuba-of-great-soul': 'https://l2j.ru/npc_picture.php?id=25063',
+  '25118-guilotine-warden-of-the-execution-grounds': 'https://l2j.ru/npc_picture.php?id=25118',
+  '25223-soul-collector-acheron': 'https://l2j.ru/npc_picture.php?id=25223',
+  '25185-tasaba-patriarch-hellena': 'https://l2j.ru/npc_picture.php?id=25185',
+  '25211-sebek': 'https://l2j.ru/npc_picture.php?id=25211',
+  '25490-gwindorr': 'https://l2j.ru/npc_picture.php?id=25490',
+  '25134-leto-chief-talkin': 'https://l2j.ru/npc_picture.php?id=25134',
+  '25064-wizard-of-storm-teruk': 'https://l2j.ru/npc_picture.php?id=25064',
+  '25214-fafurion-s-page-sika': 'https://l2j.ru/npc_picture.php?id=25214',
+  '25208-water-couatle-ateka': 'https://l2j.ru/npc_picture.php?id=25208',
+  '25192-earth-protector-panathen': 'https://l2j.ru/npc_picture.php?id=25192',
+  '25418-dread-avenger-kraven': 'https://l2j.ru/npc_picture.php?id=25418',
+  '25099-rotting-tree-repiro': 'https://l2j.ru/npc_picture.php?id=25099',
+  '25057-beacon-of-blue-sky': 'https://l2j.ru/npc_picture.php?id=25057',
+  '25498-fafurion-s-henchman-istary': 'https://l2j.ru/npc_picture.php?id=25498',
+  '25173-tiger-king-karuta': 'https://l2j.ru/npc_picture.php?id=25173',
+  '25158-king-tarlk': 'https://l2j.ru/npc_picture.php?id=25158',
+  '25412-necrosentinel-royal-guard': 'https://l2j.ru/npc_picture.php?id=25412',
+  '25026-ketra-commander-atis': 'https://l2j.ru/npc_picture.php?id=25026',
+  '25420-orfen-s-handmaiden': 'https://l2j.ru/npc_picture.php?id=25420',
+  '25217-cursed-clara': 'https://l2j.ru/npc_picture.php?id=25217',
+  '25119-messenger-of-fairy-queen-berun': 'https://l2j.ru/npc_picture.php?id=25119',
+  '25496-fafurion-s-envoy-pingolpin': 'https://l2j.ru/npc_picture.php?id=25496',
+  '25137-beleth-s-seer-sephia': 'https://l2j.ru/npc_picture.php?id=25137',
+  '25070-enchanted-forest-watcher-ruell': 'https://l2j.ru/npc_picture.php?id=25070',
+  '25010-furious-thieles': 'https://l2j.ru/npc_picture.php?id=25010',
+  '25176-black-lily': 'https://l2j.ru/npc_picture.php?id=25176',
+  '25016-the-3rd-underwater-guardian': 'https://l2j.ru/npc_picture.php?id=25016',
+  '25407-lord-ishka': 'https://l2j.ru/npc_picture.php?id=25407',
+  '25032-eva-s-guardian-millenu': 'https://l2j.ru/npc_picture.php?id=25032',
+  '25179-guardian-of-the-statue-of-giant-karum': 'https://l2j.ru/npc_picture.php?id=25179',
+  '25234-ancient-drake': 'https://l2j.ru/npc_picture.php?id=25234',
+  '25162-giant-marpanak': 'https://l2j.ru/npc_picture.php?id=25162',
+  '25255-gargoyle-lord-tiphon': 'https://l2j.ru/npc_picture.php?id=25255',
+  '25322-demon-s-agent-falston': 'https://l2j.ru/npc_picture.php?id=25322',
+  '25470-last-titan-utenus': 'https://l2j.ru/npc_picture.php?id=25470',
+  '25233-spirit-of-andras-the-betrayer': 'https://l2j.ru/npc_picture.php?id=25233'
+};
+
+function bossImgHTML(b){
+  const url = BOSS_IMG[b.i];
+  return url ? `<img class="boss-img" src="${url}" alt="${esc(b.n)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : '';
+}
+function cardThumbHTML(b){
+  const url = BOSS_IMG[b.i];
+  return url ? `<img class="card-thumb" src="${url}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.style.display='none'">` : '';
+}
 function fmtStat(n){
   const v = Number(n);
   if (n == null || n === '' || !isFinite(v)) return '—';
@@ -1636,7 +1806,7 @@ function cardHTML(b){
   }
   const staleHint = stale ? `<div class="stale-hint">Босса нет? Вероятно, уже убили — жми «🔪 Уже убит (≈)».</div>` : '';
   return `<div class="card ${meta.cls}" data-id="${b.i}">
-    <div class="row1">${favBtn(b)}<span class="name">${esc(b.n)}</span><span class="badge ${meta.badge}">${meta.txt}</span></div>
+    <div class="row1">${favBtn(b)}<span class="name">${esc(b.n)}</span><span class="badge ${meta.badge}">${meta.txt}</span>${ cardThumbHTML(b) }</div>
     <div class="loc">${esc(b.l||'')} · ур. ${b.lv}</div>
     <div class="resp">респ: ${respLabel(b)}</div>
     ${ respawnEstimateHTML(b) }
@@ -1764,6 +1934,7 @@ function detailHTML(b){
   }
   const staleHint = stale ? `<div class="stale-hint">Босса нет? Вероятно, уже убили — жми «🔪 Уже убит (≈)».</div>` : '';
   return `<div class="row1">${favBtn(b)}<span class="name">${esc(b.n)}</span><span class="badge ${meta.badge}">${meta.txt}</span></div>
+    ${ bossImgHTML(b) }
     <div class="loc">${esc(b.l||'')} · ур. ${b.lv}</div>
     <div class="resp">респ: ${respLabel(b)}</div>
     ${ bossInfoHTML(b) }
