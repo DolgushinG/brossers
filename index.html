@@ -354,7 +354,7 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
     <span style="flex:1"></span>
     <button id="mobileCfg" class="ghost mobile-only" title="Настройки, уведомления, синхронизация">⚙</button>
   </header>
-  <div class="sub">Клик по точке — детали и «убил»; время смерти можно вписать вручную. У отмеченных боссов на карте виден таймер до респа.</div>
+  <div class="sub">Клик по точке — детали и «уже убит»; время смерти можно вписать вручную. У отмеченных боссов на карте виден таймер до респа.</div>
 
   <div class="controls">
     <input type="search" id="q" placeholder="Поиск по имени или локации…" autocomplete="off">
@@ -363,9 +363,9 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
     <select id="status">
       <option value="all">все</option>
       <option value="alive">живые</option>
-      <option value="pending">на таймере</option>
-      <option value="window">возможен респ</option>
-      <option value="up">респ / готов</option>
+      <option value="pending">убитые</option>
+      <option value="window">скоро респ</option>
+      <option value="up">зареспились</option>
     </select>
     <select id="sort" title="Сортировка списка">
       <option value="level">сорт: уровень</option>
@@ -413,13 +413,13 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
       </div>
       <div class="legend">
         <span><i class="dot" style="background:#3ecf6a"></i>жив</span>
-        <span><i class="dot" style="background:#4da3ff"></i>таймер</span>
-        <span><i class="dot" style="background:#f5a623"></i>возможен респ</span>
-        <span><i class="dot" style="background:#ff5b6a"></i>респ</span>
+        <span><i class="dot" style="background:#4da3ff"></i>убит</span>
+        <span><i class="dot" style="background:#f5a623"></i>скоро респ</span>
+        <span><i class="dot" style="background:#ff5b6a"></i>зареспился</span>
         <span><i class="dot" style="background:#b06bf0"></i>проверь</span>
         <span style="margin-left:auto"><button class="ghost" id="fitBtn">⟳ Весь мир</button></span>
       </div>
-      <div class="map-hint">Колесо мыши — масштаб · зажать и тянуть — перемещение · клик по точке — детали и «убил».</div>
+      <div class="map-hint">Колесо мыши — масштаб · зажать и тянуть — перемещение · клик по точке — детали и «уже убит».</div>
     </div>
 
     <div class="list-col">
@@ -428,10 +428,10 @@ button.danger:hover{border-color:var(--red);color:var(--red)}
         <div class="list" id="list"></div>
         <div class="note">
           Окно респа: <b>[база, база + разброс]</b> («6 ± 2 ч» = минимум 6 ч, затем ещё до 2 ч).
-          Таймер считает до минимума, потом «возможен респ», затем «респ!».
-          Если «респ!» висит долго и никто не обновил отметку — босс помечается «проверь».
+          После убийства таймер идёт до минимума, затем «скоро респ», потом «зареспился».
+          Если «зареспился» висит долго и никто не обновил отметку — босс помечается «проверь».
           Боссы с «фикс. респ» (Core, Orfen, Queen Ant) — респ вручную.
-          Кнопка «🕓 Убил в…» / «🕓 Время убийства» — вписать время смерти вручную (таймер пересчитается).
+          Кнопка «🕓 Убит в…» / «🕓 Время убийства» — вписать время смерти вручную (таймер пересчитается).
           Фильтры, поиск, сортировка и положение карты запоминаются между запусками.
           Кнопка «☁» — общие таймеры для всех, кто открыл ссылку (настройка в sync-setup.txt).
           Слева — лог: кто и когда убил, проверил или сбросил. Своё имя — кнопка «✎».
@@ -1554,7 +1554,7 @@ function renderStatsRows(){
     })
     .sort((a,b)=> b.count - a.count || (bossById(a.id).n > bossById(b.id).n ? 1 : -1));
   if (!list.length){
-    box.innerHTML = `<div class="stats-empty">${q ? 'Ничего не найдено.' : 'История пуста: как только кто-то нажмёт «🔪 Убил», здесь появится запись.'}</div>`;
+    box.innerHTML = `<div class="stats-empty">${q ? 'Ничего не найдено.' : 'История пуста: как только кто-то нажмёт «🔪 Уже убит», здесь появится запись.'}</div>`;
     return;
   }
   if (!statsSel || !statsIndex.has(statsSel)) statsSel = list[0].id;
@@ -1574,7 +1574,7 @@ function renderStatsMain(){
   const st = statsSel ? statsIndex.get(statsSel) : null;
   if (!st){
     box.innerHTML = `<div class="stats-empty">${syncEnabled()
-      ? 'В истории пока нет убийств. Как только кто-то нажмёт «🔪 Убил», здесь появится запись.<br><br>Чем больше отметок, тем точнее паттерны: цикл, минимум, отклонение от паспорта.'
+      ? 'В истории пока нет убийств. Как только кто-то нажмёт «🔪 Уже убит», здесь появится запись.<br><br>Чем больше отметок, тем точнее паттерны: цикл, минимум, отклонение от паспорта.'
       : 'Статистика копится в общем журнале. Включи общие таймеры (кнопка «☁»), чтобы история собиралась на сервере.'}</div>`;
     return;
   }
@@ -1590,7 +1590,7 @@ function renderStatsMain(){
     + `<p><b>Медиана против паспорта</b> — насколько обычный цикл отличается от паспортной базы. <b>+</b> — цикл длиннее паспорта, <b>−</b> — короче, <b>0м</b> — совпадает.</p>`
     + `</div></details>`;
   html += `<div class="nums">`
-    + `<div class="num"><b>${st.count}</b><span>убийств в истории</span><span class="num-note">сколько раз нажимали «🔪 Убил»</span></div>`
+    + `<div class="num"><b>${st.count}</b><span>убийств в истории</span><span class="num-note">сколько раз нажимали «🔪 Уже убит»</span></div>`
     + `<div class="num"><b>${st.n}</b><span>интервалов</span><span class="num-note">отрезков между соседними убийствами</span></div>`
     + `<div class="num"><b>${st.median ? fmtDurShort(st.median) : '—'}</b><span>обычный цикл · медиана</span><span class="num-note">половина интервалов короче, половина длиннее</span></div>`
     + `<div class="num hl"><b>${st.best ? fmtDurShort(st.best) : '—'}</b><span>минимум · оценка респа</span><span class="num-note">самый короткий интервал — ближе всего к реальному респу</span></div>`
@@ -1694,11 +1694,11 @@ function statusOf(s){
 }
 const STATUS_META = {
   alive:   { cls:'st-alive',   badge:'b-alive',   txt:'жив' },
-  pending: { cls:'st-pending', badge:'b-pending', txt:'таймер идёт' },
-  window:  { cls:'st-window',  badge:'b-window',  txt:'возможен респ' },
-  up:      { cls:'st-up',      badge:'b-up',      txt:'респ!' },
+  pending: { cls:'st-pending', badge:'b-pending', txt:'убит' },
+  window:  { cls:'st-window',  badge:'b-window',  txt:'скоро респ' },
+  up:      { cls:'st-up',      badge:'b-up',      txt:'зареспился' },
 };
-const STALE_MS = 3 * 3600 * 1000;   // «респ!» дольше 3 ч без обновления → «проверь»
+const STALE_MS = 3 * 3600 * 1000;   // «зареспился» дольше 3 ч без обновления → «проверь»
 const STALE_META = { cls:'st-stale', badge:'b-stale', txt:'проверь!' };
 function isStale(s){ return !!s && (Date.now() - s.r1) >= STALE_MS; }
 function staleLine(ms){ return `проверь · респ уже ${fmtDur(ms)} назад`; }
@@ -1794,7 +1794,7 @@ function cardHTML(b){
       const win = b.f ? `респ к ${fmtClock(s.r0)}` : `окно: ${fmtClock(s.r0)} – ${fmtClock(s.r1)}`;
       timer = `<div class="timer"><span class="big mono">до респа: ${fmtDur(s.r0 - now)}</span><div class="window">${win}</div></div>`;
     } else if (st === 'window'){
-      timer = `<div class="timer"><span class="big mono" style="color:var(--amber)">возможен респ · до конца окна ${fmtDur(s.r1 - now)}</span></div>`;
+      timer = `<div class="timer"><span class="big mono" style="color:var(--amber)">скоро респ · до конца окна ${fmtDur(s.r1 - now)}</span></div>`;
     } else if (stale){
       timer = `<div class="timer"><span class="big mono stale">${staleLine(now - s.r1)}</span></div>`;
     } else {
@@ -1921,7 +1921,7 @@ function detailHTML(b){
       const win = b.f ? `респ к ${fmtClock(s.r0)}` : `окно: ${fmtClock(s.r0)} – ${fmtClock(s.r1)}`;
       timer = `<div class="timer"><span class="big mono" id="dtBig">до респа: ${fmtDur(s.r0 - now)}</span><div class="window">${win} · убит в ${fmtClock(s.k)}</div></div>`;
     } else if (st === 'window'){
-      timer = `<div class="timer"><span class="big mono" style="color:var(--amber)" id="dtBig">возможен респ · до конца окна ${fmtDur(s.r1 - now)}</span></div>`;
+      timer = `<div class="timer"><span class="big mono" style="color:var(--amber)" id="dtBig">скоро респ · до конца окна ${fmtDur(s.r1 - now)}</span></div>`;
     } else if (stale){
       timer = `<div class="timer"><span class="big mono stale" id="dtBig">${staleLine(now - s.r1)}</span></div>`;
     } else {
@@ -1949,7 +1949,7 @@ function actionsHTML(b){
   const s = state[b.i];
   const mode = b.f ? 'fixed' : 'killed';
   const tTitle = b.f ? 'Вписать время респа вручную' : 'Вписать время убийства вручную (таймер пересчитается)';
-  const tLabel = b.f ? (s ? '🕓 Время' : '🕓 Задать респ') : (s ? '🕓 Время' : '🕓 Убил в…');
+  const tLabel = b.f ? (s ? '🕓 Время' : '🕓 Задать респ') : (s ? '🕓 Время' : '🕓 Убит в…');
   if (s){
     const staleKill = (!b.f && isStale(s))
       ? `<button class="primary" title="Босс уже убит, точное время неизвестно — отметка будет приблизительной (≈). Уточнить можно через «🕓 Время»." onclick="markKilled('${b.i}', true)">🔪 Уже убит (≈)</button>`
@@ -1960,7 +1960,7 @@ function actionsHTML(b){
       + `<button class="ghost" onclick="resetBoss('${b.i}')">↺ Сброс</button>`;
   }
   if (b.f) return `<button class="primary" title="${tTitle}" onclick="openTimeModal('${b.i}','fixed')">${tLabel}</button>`;
-  return `<button class="primary" onclick="markKilled('${b.i}')">🔪 Убил</button>`
+  return `<button class="primary" title="Отметить босса уже убитым (убил не обязательно ты) — таймер респа пойдёт от текущего времени." onclick="markKilled('${b.i}')">🔪 Уже убит</button>`
     + `<button class="ghost" title="${tTitle}" onclick="openTimeModal('${b.i}','killed')">${tLabel}</button>`;
 }
 
@@ -2142,7 +2142,7 @@ function updateLive(){
     const big = el.querySelector('.big');
     if (big){
       if (st==='pending') big.textContent = `до респа: ${fmtDur(s.r0 - now)}`;
-      else if (st==='window') big.textContent = `возможен респ · до конца окна ${fmtDur(s.r1 - now)}`;
+      else if (st==='window') big.textContent = `скоро респ · до конца окна ${fmtDur(s.r1 - now)}`;
       else if (stale) big.textContent = staleLine(now - s.r1);
       else big.textContent = `респ — уже ${fmtDur(now - s.r1)} назад`;
     }
@@ -2154,7 +2154,7 @@ function updateLive(){
       const st = statusOf(s);
       const stale = isStale(s);
       if (st==='pending') big.textContent = `до респа: ${fmtDur(s.r0 - now)}`;
-      else if (st==='window') big.textContent = `возможен респ · до конца окна ${fmtDur(s.r1 - now)}`;
+      else if (st==='window') big.textContent = `скоро респ · до конца окна ${fmtDur(s.r1 - now)}`;
       else if (stale) big.textContent = staleLine(now - s.r1);
       else big.textContent = `респ — уже ${fmtDur(now - s.r1)} назад`;
     }
